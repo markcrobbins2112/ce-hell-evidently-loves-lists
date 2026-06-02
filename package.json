@@ -1,0 +1,211 @@
+{
+	"name": "hell-evidently-loves-lists",
+	"displayName": "Hell Evidently Loves Lists",
+	"description": "HELL: - Automated markdown list data compiler using double-colon namespaces and multi-tier child combinators.",
+	"version": "0.0.1",
+	"author": "markrobbins",
+	"publisher": "markrobbins",
+	"keywords": [
+		"markdown",
+		"list",
+		"unique",
+		"export",
+		"import",
+		"json",
+		"quickpick"
+	],
+	"categories": [
+		"Other"
+	],
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"main": "extension.js",
+	"icon": "icon.jpg",
+	"files": [
+		"extension.js",
+		"icon.jpg",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"package": "vsce package"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.3",
+		"@types/vscode": "^1.80.0",
+		"@vscode/vsce": "^3.6.2"
+	},
+	"activationEvents": [],
+	"contributes": {
+		"languages": [
+			{
+				"id": "markdown",
+				"aliases": [
+					"Markdown",
+					"markdown"
+				]
+			}
+		],
+		"commands": [
+			{
+				"command": "hell.directives.insertExample",
+				"title": "HELL: Insert Example Directives Template Block",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.export.execute",
+				"title": "HELL: Execute Named Export Directive",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.section.sort",
+				"title": "HELL: Sort Section Content (Ignore Bullets/Checkboxes)",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.section.union",
+				"title": "HELL: Compute Global Union Set... (Interactive Picker Options)",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.section.copy",
+				"title": "HELL: Copy Section(s)... (Interactive Options)",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.section.inject",
+				"title": "HELL: Inject Section(s)... (Interactive Options)",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.section.import",
+				"title": "HELL: Import Data Array to Section...",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.section.export",
+				"title": "HELL: Export Section Data Array to File...",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.append",
+				"title": "HELL: Append Active Item to Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.prepend",
+				"title": "HELL: Prepend Active Item to Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.merge",
+				"title": "HELL: Merge Active Item into Section (No Dupes)",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.move.prev",
+				"title": "HELL: Copy/Move Item to Previous Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.move.next",
+				"title": "HELL: Copy/Move Item to Next Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.move.parent",
+				"title": "HELL: Copy/Move Item to Parent Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.move.child",
+				"title": "HELL: Copy/Move Item to Child Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.move.sibling",
+				"title": "HELL: Copy/Move Item to Sibling Section",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.markers.refresh",
+				"title": "HELL: Re-evaluate Section Integrity Indicators (Lint Markers)",
+				"category": "HELL"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "hell.directives.insertExample",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.export.execute",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.sort",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.union",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.copy",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.inject",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.import",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.export",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.append",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.prepend",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.merge",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.prev",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.next",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.parent",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.child",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.sibling",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.markers.refresh",
+					"when": "editorLangId == markdown"
+				}
+			]
+		}
+	}
+}
