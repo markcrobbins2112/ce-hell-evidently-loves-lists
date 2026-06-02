@@ -43,10 +43,18 @@
 		"onCommand:hell.export.execute",
 		"onCommand:hell.section.sort",
 		"onCommand:hell.section.union",
+		"onCommand:hell.section.intersect",
 		"onCommand:hell.section.copy",
 		"onCommand:hell.section.inject",
 		"onCommand:hell.section.import",
 		"onCommand:hell.section.export",
+		"onCommand:hell.sections.sort",
+		"onCommand:hell.sections.unique",
+		"onCommand:hell.directives.uniqueSections",
+		"onCommand:hell.directives.sortSections",
+		"onCommand:hell.item.remove",
+		"onCommand:hell.item.inject",
+		"onCommand:hell.item.yank",
 		"onCommand:hell.item.append",
 		"onCommand:hell.item.prepend",
 		"onCommand:hell.item.merge",
@@ -96,6 +104,46 @@
 			{
 				"command": "hell.section.sort",
 				"title": "Sort Section Content (Ignore Bullets/Checkboxes)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.section.intersect",
+				"title": "Sections: Create Item Intersection _scii",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.sections.sort",
+				"title": "Sections: Sort Sections _sss",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.sections.unique",
+				"title": "Sections: Unique Sections _sus",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.directives.uniqueSections",
+				"title": "Directives: Unique Sections _dus",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.directives.sortSections",
+				"title": "Directives: Sort Sections _dss",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.remove",
+				"title": "Items: Remove from Sections _irfs",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.inject",
+				"title": "Items: Inject to Sections _iits",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.yank",
+				"title": "Items: Yank Items from Sections _iy",
 				"category": "👹HELL"
 			},
 			{
@@ -256,6 +304,38 @@
 				},
 				{
 					"command": "hell.section.sort",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.section.intersect",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.sections.sort",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.sections.unique",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.directives.uniqueSections",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.directives.sortSections",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.remove",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.inject",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.yank",
 					"when": "editorLangId == markdown"
 				},
 				{

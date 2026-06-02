@@ -31,6 +31,43 @@
 - "data",
 - "datab",
 ```
+### Format Directive
+#### Data Format
+- a line can look like
+	- {optional tabs or spaces}{optional - for bullet}{optional checkbox}{optional checkbox tag}{data container}{optional user text}{optional //{more user text}}
+	- examples
+		- 1 '- [ ] FAIL: "data" comments // meta comments'
+		- 2 '- [ ] FAIL: "data", comments // meta comments'
+		- 3 '- [ ] FAIL: 'data''
+		- 4 '- [ ] FAIL: `data`'
+		- 5 '- [ ] FAIL: data'
+		- data formats
+			1. is directive FORMATQ (default)
+			2. is directive FORMATC
+			3. is directive FORMATQ
+			4. is directive FORMATQ
+			5. is directive FORMAT
+- Items being moved or copied have to adapt to the sections format
+- Items being moved or copied have to adapt to the proper indent level
+- Items being sorted use the actual data no matter its format
+- Items with bad format should be indicated by before
+- commands to deal with format
+	- [ ] NEW: format: remove
+		- multi picker (show each that is present)
+			- remove indent
+			- remove bullet
+			- remove text before data
+			- remove text after data
+			- remove meta text after text after data
+			- remove data quotes
+			- remove data comma
+	- [ ] NEW: add
+		- multi picker (show each that is not present)
+			- add indent
+			- add bullet
+			- add data quotes
+			- add data comma
+
 ### Prepare for Command Renames
 - [ ] NEW: Commands and their new titles
 	- `hell.markers.refresh` Markers: Refresh _mr
@@ -67,25 +104,33 @@
 	- `hell.item.copy.sibling` Items: Copy Items to Sibling Section _icss
 
 ### New Commands
-- [ ] NEW: Yank
-	- cut items and put them in current section
-	- picker: from sections
-	- with each section: picker: child depth|items
-	- picker: flatten
-	- picker: sort
-	- picker: unique
-	- picker: inject or copy
-	- if inject: picker: prepend append merge
+- [ ] FAIL: Yank
+	- [ ]  Nothing happens
+	- [ ] NEW: cut items and put them in current section
+	- [ ] NEW: picker: from sections
+	- [ ] NEW: with each section: picker: child depth|items
+	- [ ] NEW: picker: flatten
+	- [ ] NEW: picker: sort
+	- [ ] NEW: picker: unique
+	- [ ] NEW: picker: inject or copy
+	- [ ] NEW: if inject: picker: prepend append merge
 - use new naming style
-- [ ] NEW: Section Intersect
+- [ ] FAIL: Section Intersect
+	- [ ] has no results
 	- works like union but does intersection
-- [ ] NEW: Item Remove from Sections
+- [ ] FAIL: Item Remove from Sections
+	- [ ] not found
 - [ ] NEW: Item Inject to Sections
-- [ ] NEW: Sections Sort
+	- [ ] NEW: first picker should be choice between current items or new item
+- [ ] FAIL: Sections Sort Child Sections
+	- [ ] FAIL: picker does not bring up list of every section with children
+- [ ] NEW: Sections Sort Child Items
 - [ ] NEW: Sections Unique
+	- [ ] NEW: Rename Sections Unique children
 - [ ] NEW: Directives Unique Sections
+	- [ ] I ren this and the dupe indicators started working, now need that undone if it is permanent. this function is meant to inject a html comment directive
 	- write/reuse directive as first item in section
-- [ ] NEW: Directives Sort Sections
+- [x] NEW: Directives Sort Sections
 	- write/reuse directive as first item in section
 
 - [X] insert directives
@@ -140,14 +185,15 @@
 	- **Description**: Investigate and fix why the Copy or Move picker option is missing or bypassed on some commands.
 	- **Remediation**: Updated primitive standalone commands (`hell.item.append`, `hell.item.prepend`, `hell.item.merge`) to properly prompt the user with a Copy vs. Move choice block, matching the robust UX behavior of the directional migration operations.
 
-- [ ] FAIL: Task 4: Fix Missing Duplicate Decoration (`::before` / `::after`) for Duplicate Core Data
-	- [ ] nothing shows in before or after
-	- [ ] see extension-with-befores.ts for example of working before/after
+- [x] FAIL: Task 4: Fix Missing Duplicate Decoration (`::before` / `::after`) for Duplicate Core Data
+	- [X] nothing shows in before or after
+	- [X] see extension-with-befores.ts for example of working before/after
 	- **Description**: Duplicate indicator badges inside headers / lines are not visible when a Markdown document is first opened.
 	- **Remediation**:
 		- Added a `vscode.workspace.onDidOpenTextDocument` listener to safely trigger real-time auto-sync and decorator painting logic as soon as a Markdown file is opened.
 		- Refactored `extension.js` by completely removing redundant duplicate function declarations (Part 1B), consolidating logic around the more complete Part 2 definitions.
 		- Improved the directive regex to support optional trailing/leading spaces near combinators (`>>`), ensuring 100% accurate token matching for multi-level configurations.
+		- Configured initial `createTextEditorDecorationType` call styles with standard properties (color, margin, etc.) to allocate resource layers, enabling individual dynamic decoration overrides to display.
 
 - [X] Task 5: Handle Non-Newline Section Appending and Convert Indented Bullet points to Tabs
 	- **Description**: Appending to a section that lacked a trailing newline resulted in welding text directly to the heading label. Also, nested indentation needs to always use tab characters over spaces.

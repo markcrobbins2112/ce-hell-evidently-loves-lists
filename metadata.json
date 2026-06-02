@@ -1,6 +1,6 @@
 {
   "name": "zip",
-  "description": "",
+  "description": "Design, prototype, and build custom AI-powered extensions for VS Code and Cursor. Test them in an interactive simulator powered by Gemini.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

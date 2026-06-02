@@ -33,7 +33,17 @@ FOLLOW COPY MOVE {global}
 
 const activeAutoSyncLocks = new Map();
 const sectionContentHashCache = new Map();
-let hellDecorationType = vscode.window.createTextEditorDecorationType({ before: {}, after: {} });
+let hellDecorationType = vscode.window.createTextEditorDecorationType({
+	before: {
+		color: '#ffaa00',
+		margin: '0 4px 0 0'
+	},
+	after: {
+		color: '#ff5555',
+		fontStyle: 'italic',
+		margin: '0 0 0 12px'
+	}
+});
 
 
 
@@ -354,7 +364,17 @@ function evaluateDocumentIntegrity() {
 		nativeDecorationsArray.push(decorationLayout);
 	});
 
-	hellDecorationType = vscode.window.createTextEditorDecorationType({ before: {}, after: {} });
+	hellDecorationType = vscode.window.createTextEditorDecorationType({
+		before: {
+			color: '#ffaa00',
+			margin: '0 4px 0 0'
+		},
+		after: {
+			color: '#ff5555',
+			fontStyle: 'italic',
+			margin: '0 0 0 12px'
+		}
+	});
 	editor.setDecorations(hellDecorationType, nativeDecorationsArray);
 }
 
@@ -671,7 +691,7 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 	let resultLines = [...originalLines];
 	
 	for (const item of items) {
-		const rawText = item.text;
+		const rawText = typeof item === 'string' ? item : (item && item.text ? item.text : String(item));
 		const cleanVal = tokenizeLine(rawText);
 		
 		if (insertMode === "merge" || rules.has("UNIQUE") || rules.has("ALPHA")) {
@@ -1381,6 +1401,519 @@ async function executeSectionExportCommand() {
 	vscode.window.showInformationMessage(`Successfully exported data to ${path.basename(filePath)}`);
 }
 
+async function executeSectionIntersectCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) { return; }
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const pickerItems = sortedSections.map(s => ({ label: s.namespace, description: `Heading line ${s.lineIndex + 1}` }));
+
+	const quickPick = vscode.window.createQuickPick();
+	quickPick.items = pickerItems;
+	quickPick.canSelectMany = true;
+	quickPick.title = "🧠 INTERSECT: Step 1 - Choose multiple sections to intersect";
+
+	quickPick.onDidAccept(async () => {
+		const selected = quickPick.selectedItems;
+		if (selected.length === 0) {
+			quickPick.dispose();
+			return;
+		}
+		quickPick.dispose();
+
+		const actionChoice = await vscode.window.showQuickPick([
+			{ label: "📋 Copy Intersection Set Array", value: "copy" },
+			{ label: "💉 Inject Intersection Elements Below Cursor", value: "inject" }
+		], { placeHolder: "⚡ Step 2: Choose execution method for intersection results" });
+
+		if (!actionChoice) { return; }
+
+		// Gather lines from each selected section
+		const sectionLinesMap = selected.map(item => {
+			const targetNode = sections.find(s => s.namespace === item.label);
+			return targetNode ? targetNode.contentLines : [];
+		});
+
+		// Compute intersection based on clean token values
+		let intersectLines = [];
+		if (sectionLinesMap.length > 0) {
+			const firstSectionLines = sectionLinesMap[0];
+			firstSectionLines.forEach(l => {
+				const existsInAll = sectionLinesMap.slice(1).every(linesArray => 
+					linesArray.some(otherL => otherL.clean === l.clean)
+				);
+				if (existsInAll && !intersectLines.some(existing => existing.clean === l.clean)) {
+					intersectLines.push(l);
+				}
+			});
+		}
+
+		const finalRawLines = intersectLines.map(l => l.raw);
+
+		if (actionChoice.value === "copy") {
+			await vscode.env.clipboard.writeText(finalRawLines.join('\n'));
+			vscode.window.showInformationMessage(`HELL: Saved intersection result [${finalRawLines.length} lines] to clipboard!`);
+		} else {
+			const insertPos = new vscode.Position(editor.selection.active.line + 1, 0);
+			await editor.edit(editBuilder => { editBuilder.insert(insertPos, finalRawLines.join('\n') + '\n'); });
+			handleFollowFocusRouting(editor, insertPos.line, selected[0]?.label);
+		}
+	});
+	quickPick.show();
+}
+
+async function executeItemRemoveFromSectionsCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) { return; }
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const selectSections = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { canPickMany: true, placeHolder: "Step 1: Choose sections to remove items from" });
+
+	if (!selectSections || selectSections.length === 0) { return; }
+
+	const uniqueItemsMap = new Map();
+	selectSections.forEach(choice => {
+		choice.section.contentLines.forEach(lineObj => {
+			if (!uniqueItemsMap.has(lineObj.clean)) {
+				uniqueItemsMap.set(lineObj.clean, {
+					clean: lineObj.clean,
+					raw: lineObj.raw,
+					occurrences: []
+				});
+			}
+			uniqueItemsMap.get(lineObj.clean).occurrences.push({
+				section: choice.section,
+				lineIndex: lineObj.lineIndex
+			});
+		});
+	});
+
+	if (uniqueItemsMap.size === 0) {
+		vscode.window.showInformationMessage("HELL: No lines found in selected sections.");
+		return;
+	}
+
+	const pickerItems = Array.from(uniqueItemsMap.values()).map(item => ({
+		label: item.raw,
+		description: `Occurrences: ${item.occurrences.length}`,
+		clean: item.clean,
+		occurrences: item.occurrences
+	})).sort((a, b) => a.clean.localeCompare(b.clean));
+
+	const itemQuickPick = vscode.window.createQuickPick();
+	itemQuickPick.items = pickerItems;
+	itemQuickPick.canSelectMany = true;
+	itemQuickPick.title = "Step 2: Choose specific items to remove";
+
+	itemQuickPick.onDidAccept(async () => {
+		const selectedItems = itemQuickPick.selectedItems;
+		if (selectedItems.length === 0) {
+			itemQuickPick.dispose();
+			return;
+		}
+		itemQuickPick.dispose();
+
+		const lineIndicesToDelete = new Set();
+		selectedItems.forEach(item => {
+			item.occurrences.forEach(occ => {
+				lineIndicesToDelete.add(occ.lineIndex);
+			});
+		});
+
+		await editor.edit(editBuilder => {
+			const sortedIndices = Array.from(lineIndicesToDelete).sort((a, b) => b - a);
+			sortedIndices.forEach(idx => {
+				const range = new vscode.Range(idx, 0, idx + 1, 0);
+				editBuilder.delete(range);
+			});
+		});
+
+		vscode.window.showInformationMessage(`HELL: Successfully removed chosen items from selected sections.`);
+		evaluateDocumentIntegrity();
+	});
+	itemQuickPick.show();
+}
+
+async function executeItemInjectToSectionsCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) { return; }
+
+	const selectSections = await vscode.window.showQuickPick(sections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { canPickMany: true, placeHolder: "Step 1: Choose destination sections to inject items into" });
+
+	if (!selectSections || selectSections.length === 0) { return; }
+
+	const selectedText = editor.document.getText(editor.selection);
+	let txtToInject = "";
+
+	if (selectedText.trim()) {
+		const textChoice = await vscode.window.showQuickPick([
+			{ label: "Use active selection text", value: "selection" },
+			{ label: "Enter manual custom text...", value: "manual" }
+		], { placeHolder: "Step 2: Choose item source text" });
+
+		if (!textChoice) { return; }
+		if (textChoice.value === "selection") {
+			txtToInject = selectedText;
+		}
+	}
+
+	if (!txtToInject) {
+		const input = await vscode.window.showInputBox({
+			prompt: "Step 2: Enter item text to inject (supports multi-line or bullet/comma listed text)"
+		});
+		if (!input) { return; }
+		txtToInject = input;
+	}
+
+	const modeChoice = await vscode.window.showQuickPick([
+		{ label: "Prepend", value: "prepend", description: "Insert as the first item of each section" },
+		{ label: "Append", value: "append", description: "Insert as the last item of each section" },
+		{ label: "Merge", value: "merge", description: "Insert only if the clean text is not already present" }
+	], { placeHolder: "Step 3: Select injection location mode" });
+
+	if (!modeChoice) { return; }
+
+	const mode = modeChoice.value;
+	const lines = txtToInject.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+	for (const choice of selectSections) {
+		const targetSec = choice.section;
+		await relocateItem(editor, lines, targetSec, 'copy', mode);
+	}
+	evaluateDocumentIntegrity();
+}
+
+async function executeSectionsSortCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) { return; }
+
+	const parents = new Set();
+	sections.forEach(s => {
+		if (s.parentNamespace) {
+			parents.add(s.parentNamespace);
+		}
+	});
+
+	const parentChoices = [{ label: "Root (Top Level headings)", value: null }];
+	Array.from(parents).forEach(p => {
+		parentChoices.push({ label: String(p), value: p });
+	});
+
+	const chosenParent = await vscode.window.showQuickPick(parentChoices, {
+		placeHolder: "Select parent section whose child sections you want to sort alphabetically"
+	});
+
+	if (chosenParent === undefined) { return; }
+
+	const parentVal = chosenParent.value;
+	const children = sections.filter(s => s.parentNamespace === parentVal);
+	if (children.length <= 1) {
+		vscode.window.showInformationMessage("HELL: Target has 1 or fewer child sections to sort.");
+		return;
+	}
+
+	const childBlocks = children.map((child) => {
+		const startLine = child.lineIndex;
+		let endLine = document.lineCount;
+
+		for (let i = startLine + 1; i < document.lineCount; i++) {
+			const lineText = document.lineAt(i).text;
+			const m = lineText.match(/^(#+)\s+/);
+			if (m) {
+				const level = m[1].length;
+				if (level <= child.level) {
+					endLine = i;
+					break;
+				}
+			}
+		}
+
+		const textRange = new vscode.Range(startLine, 0, endLine, 0);
+		const blockText = document.getText(textRange);
+
+		return {
+			title: child.title,
+			startLine,
+			endLine,
+			range: textRange,
+			text: blockText
+		};
+	});
+
+	const sortedBlocks = [...childBlocks].sort((a, b) => a.title.localeCompare(b.title));
+
+	await editor.edit(editBuilder => {
+		const indices = childBlocks.map((_, i) => i).sort((idxA, idxB) => childBlocks[idxB].startLine - childBlocks[idxA].startLine);
+		indices.forEach(idx => {
+			const originalRange = childBlocks[idx].range;
+			const targetBlockText = sortedBlocks[idx].text;
+			editBuilder.replace(originalRange, targetBlockText);
+		});
+	});
+
+	vscode.window.showInformationMessage("HELL: Ordered child sections alphabetically!");
+	evaluateDocumentIntegrity();
+}
+
+async function executeSectionsUniqueCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) { return; }
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const selectSections = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { canPickMany: true, placeHolder: "Select sections to de-duplicate" });
+
+	if (!selectSections || selectSections.length === 0) { return; }
+
+	await editor.edit(editBuilder => {
+		selectSections.forEach(choice => {
+			const targetSec = choice.section;
+			const uniqueClean = new Set();
+			const duplicateLineIndices = [];
+
+			targetSec.contentLines.forEach(lineObj => {
+				if (uniqueClean.has(lineObj.clean)) {
+					duplicateLineIndices.push(lineObj.lineIndex);
+				} else {
+					uniqueClean.add(lineObj.clean);
+				}
+			});
+
+			duplicateLineIndices.sort((a, b) => b - a).forEach(idx => {
+				const range = new vscode.Range(idx, 0, idx + 1, 0);
+				editBuilder.delete(range);
+			});
+		});
+	});
+
+	vscode.window.showInformationMessage("HELL: Cleaned duplicates out of chosen sections!");
+	evaluateDocumentIntegrity();
+}
+
+async function executeAddDirectiveCommand(type) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) { return; }
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const choice = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { placeHolder: `Choose section to add 🔸 ${type} directive for` });
+
+	if (!choice) { return; }
+
+	const sectionNamespace = choice.section.namespace;
+	const directiveLine = `🔸 ${type} ${sectionNamespace} >>`;
+
+	const text = document.getText();
+	const blockMatch = /<!--\s*HELL:\s*(?:SAMPLE\s+)?DIRECTIVES([\s\S]*?)-->/i.exec(text);
+
+	if (blockMatch) {
+		const matchIndex = blockMatch.index;
+		const innerContent = blockMatch[1];
+		const openingMatch = text.substring(matchIndex).match(/<!--\s*HELL:\s*(?:SAMPLE\s+)?DIRECTIVES/i);
+		const insertOffset = matchIndex + openingMatch[0].length;
+		const insertPos = document.positionAt(insertOffset);
+
+		const regex = new RegExp(`🔸\\s*${type}\\s+${sectionNamespace.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\s*(>>|>1>|>2>|>-2>|>!-2>)?`, 'i');
+		if (regex.test(innerContent)) {
+			vscode.window.showInformationMessage(`HELL: Directive for ${sectionNamespace} already exists.`);
+			return;
+		}
+
+		await editor.edit(editBuilder => {
+			editBuilder.insert(insertPos, `\n${directiveLine}`);
+		});
+		vscode.window.showInformationMessage(`HELL: Prepend directive to active HTML block comment!`);
+	} else {
+		const prependText = `<!-- HELL:DIRECTIVES\n${directiveLine}\n-->\n\n`;
+		const insertPos = new vscode.Position(0, 0);
+		await editor.edit(editBuilder => {
+			editBuilder.insert(insertPos, prependText);
+		});
+		vscode.window.showInformationMessage(`HELL: Stamped fresh configuration header at top of file!`);
+	}
+	evaluateDocumentIntegrity();
+}
+
+async function executeItemYankCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) { return; }
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) { return; }
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const selectSourceSections = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { canPickMany: true, placeHolder: "YANK Step 1: Choose source sections to yank items from" });
+
+	if (!selectSourceSections || selectSourceSections.length === 0) { return; }
+
+	const depthChoice = await vscode.window.showQuickPick([
+		{ label: "This section only (no children)", value: "self" },
+		{ label: "Recursive descendants (>>)", value: ">>" },
+		{ label: "Immediate level-1 children only (>1>)", value: ">1>" },
+		{ label: "Children and grandchildren (>2>)", value: ">2>" }
+	], { placeHolder: "YANK Step 2: Choose source hierarchy scope/depth" });
+
+	if (!depthChoice) { return; }
+
+	let allSourceLines = [];
+	selectSourceSections.forEach(choice => {
+		const targetNodes = sections.filter(s => {
+			if (depthChoice.value === "self") {
+				return s.namespace === choice.section.namespace;
+			} else if (depthChoice.value === ">>") {
+				return s.namespace === choice.section.namespace || s.namespace.startsWith(choice.section.namespace + '::');
+			} else if (depthChoice.value === ">1>") {
+				return s.namespace === choice.section.namespace || (s.parentNamespace === choice.section.namespace && s.level === choice.section.level + 1);
+			} else if (depthChoice.value === ">2>") {
+				return s.namespace === choice.section.namespace || (s.namespace.startsWith(choice.section.namespace + '::') && s.level <= choice.section.level + 2);
+			}
+			return false;
+		});
+
+		targetNodes.forEach(node => {
+			node.contentLines.forEach(lineObj => {
+				allSourceLines.push(lineObj);
+			});
+		});
+	});
+
+	if (allSourceLines.length === 0) {
+		vscode.window.showInformationMessage("HELL: No lines found in selected source scopes.");
+		return;
+	}
+
+	const itemsPickerItems = allSourceLines.map(lineObj => ({
+		label: lineObj.raw,
+		lineObj: lineObj
+	}));
+
+	const itemsQuickPick = vscode.window.createQuickPick();
+	itemsQuickPick.items = itemsPickerItems;
+	itemsQuickPick.canSelectMany = true;
+	itemsQuickPick.title = "YANK Step 3: Select specific items to yank (cut)";
+
+	itemsQuickPick.onDidAccept(async () => {
+		const chosenYankItems = itemsQuickPick.selectedItems;
+		if (chosenYankItems.length === 0) {
+			itemsQuickPick.dispose();
+			return;
+		}
+		itemsQuickPick.dispose();
+
+		const sortChoice = await vscode.window.showQuickPick([
+			{ label: "Normal order (as they appear)", value: "normal" },
+			{ label: "Sort alphabetically (A-Z)", value: "alpha" }
+		], { placeHolder: "YANK Step 4: Do you want to sort the yanked items?" });
+
+		if (!sortChoice) { return; }
+
+		const uniqueChoice = await vscode.window.showQuickPick([
+			{ label: "Keep duplicates", value: "all" },
+			{ label: "Unique items only", value: "unique" }
+		], { placeHolder: "YANK Step 5: Filter duplicates?" });
+
+		if (!uniqueChoice) { return; }
+
+		let finalYankLines = chosenYankItems.map(item => item.lineObj);
+		if (uniqueChoice.value === "unique") {
+			const seenClean = new Set();
+			finalYankLines = finalYankLines.filter(lineObj => {
+				if (seenClean.has(lineObj.clean)) { return false; }
+				seenClean.add(lineObj.clean);
+				return true;
+			});
+		}
+		if (sortChoice.value === "alpha") {
+			finalYankLines.sort((a, b) => a.clean.localeCompare(b.clean));
+		}
+
+		const actionChoice = await vscode.window.showQuickPick([
+			{ label: "📋 Copy to Clipboard", value: "copy" },
+			{ label: "💉 Inject into Section", value: "inject" }
+		], { placeHolder: "YANK Step 6: Choose target execution action" });
+
+		if (!actionChoice) { return; }
+
+		const textsToInsert = finalYankLines.map(lineObj => lineObj.raw);
+
+		if (actionChoice.value === "copy") {
+			await vscode.env.clipboard.writeText(textsToInsert.join('\n'));
+			await editor.edit(editBuilder => {
+				const sortedLinesToDelete = finalYankLines.map(l => l.lineIndex).sort((a, b) => b - a);
+				sortedLinesToDelete.forEach(lineIdx => {
+					editBuilder.delete(new vscode.Range(lineIdx, 0, lineIdx + 1, 0));
+				});
+			});
+			vscode.window.showInformationMessage(`HELL: Yanked (cut) ${textsToInsert.length} items to clipboard!`);
+		} else {
+			const cursorLine = editor.selection.active.line;
+			const activeSec = [...sections].reverse().find(s => s.lineIndex <= cursorLine);
+			if (!activeSec) {
+				vscode.window.showWarningMessage("HELL: Please place cursor inside a valid section first.");
+				return;
+			}
+
+			const relocateModeChoice = await vscode.window.showQuickPick([
+				{ label: "Prepend to Section", value: "prepend" },
+				{ label: "Append to Section", value: "append" },
+				{ label: "Merge into Section (No duplicates)", value: "merge" }
+			], { placeHolder: `YANK Step 7: Relocate Mode for injecting into '${activeSec.namespace}'` });
+
+			if (!relocateModeChoice) { return; }
+
+			await editor.edit(editBuilder => {
+				const sortedLinesToDelete = finalYankLines.map(l => l.lineIndex).sort((a, b) => b - a);
+				sortedLinesToDelete.forEach(lineIdx => {
+					editBuilder.delete(new vscode.Range(lineIdx, 0, lineIdx + 1, 0));
+				});
+			});
+
+			const freshSections = parseDocumentSections(editor.document);
+			const freshActiveSec = freshSections.find(s => s.namespace === activeSec.namespace);
+			if (freshActiveSec) {
+				await relocateItem(editor, textsToInsert, freshActiveSec, 'copy', relocateModeChoice.value);
+			}
+			vscode.window.showInformationMessage(`HELL: Successfully yanked (cut and moved) chosen items to section '${activeSec.namespace}'!`);
+		}
+		evaluateDocumentIntegrity();
+	});
+	itemsQuickPick.show();
+}
+
 /**
  * Registers multi-step interactive pipelines.
  */
@@ -1470,7 +2003,26 @@ function registerInteractivePipelines(context) {
 		await runStep1();
 	});
 
-	context.subscriptions.push(unionCmd);
+	let intersectCmd = vscode.commands.registerCommand('hell.section.intersect', executeSectionIntersectCommand);
+	let itemRemoveCmd = vscode.commands.registerCommand('hell.item.remove', executeItemRemoveFromSectionsCommand);
+	let itemInjectCmd = vscode.commands.registerCommand('hell.item.inject', executeItemInjectToSectionsCommand);
+	let sectionsSortCmd = vscode.commands.registerCommand('hell.sections.sort', executeSectionsSortCommand);
+	let sectionsUniqueCmd = vscode.commands.registerCommand('hell.sections.unique', executeSectionsUniqueCommand);
+	let directivesUniqueCmd = vscode.commands.registerCommand('hell.directives.uniqueSections', () => executeAddDirectiveCommand('UNIQUE'));
+	let directivesSortCmd = vscode.commands.registerCommand('hell.directives.sortSections', () => executeAddDirectiveCommand('ALPHA'));
+	let itemYankCmd = vscode.commands.registerCommand('hell.item.yank', executeItemYankCommand);
+
+	context.subscriptions.push(
+		unionCmd,
+		intersectCmd,
+		itemRemoveCmd,
+		itemInjectCmd,
+		sectionsSortCmd,
+		sectionsUniqueCmd,
+		directivesUniqueCmd,
+		directivesSortCmd,
+		itemYankCmd
+	);
 }
 
 
