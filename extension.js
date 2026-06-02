@@ -68,6 +68,181 @@ function tokenizeLine(rawText) {
 }
 
 /**
+ * Parses markdown list items into separate constituent chunks to allow flexible transitions between layouts.
+ */
+function parseMarkdownLine(rawText) {
+	let remaining = rawText;
+	
+	// 1. Extract Indent
+	const indentMatch = remaining.match(/^([ \t]*)/);
+	const indent = indentMatch ? indentMatch[1] : '';
+	remaining = remaining.substring(indent.length);
+	
+	// 2. Extract Comment (trailing // comment)
+	let comment = '';
+	const commentIdx = remaining.lastIndexOf('//');
+	if (commentIdx !== -1) {
+		comment = remaining.substring(commentIdx);
+		remaining = remaining.substring(0, commentIdx);
+	}
+	
+	// 3. Extract Bullet
+	let bullet = '';
+	const bulletMatch = remaining.match(/^([-*+]\s+)/);
+	if (bulletMatch) {
+		bullet = bulletMatch[1];
+		remaining = remaining.substring(bullet.length);
+	}
+	
+	// 4. Extract Checkbox
+	let checkbox = '';
+	const checkboxMatch = remaining.match(/^(\[[ xX\-]?\]\s+)/);
+	if (checkboxMatch) {
+		checkbox = checkboxMatch[1];
+		remaining = remaining.substring(checkbox.length);
+	}
+	
+	// 5. Extract Tag
+	let tag = '';
+	const tagMatch = remaining.match(/^([A-Z_]+:\s+)/);
+	if (tagMatch) {
+		tag = tagMatch[1];
+		remaining = remaining.substring(tag.length);
+	}
+	
+	let dataQuote = '';
+	let hasComma = false;
+	let dataValue = remaining.trim();
+	let userTextAfter = '';
+	
+	// Analyze central string data values and any trailing commas
+	const quoteMatch = remaining.match(/^(\s*)(")(.*?)(")(,?)(\s*)(.*)$/);
+	if (quoteMatch) {
+		dataQuote = '"';
+		dataValue = quoteMatch[3];
+		hasComma = !!quoteMatch[5];
+		userTextAfter = quoteMatch[7].trim();
+	} else {
+		const trailingCommaMatch = remaining.match(/^(.*?)(,)(\s*)(.*)$/);
+		if (trailingCommaMatch) {
+			dataValue = trailingCommaMatch[1].trim();
+			hasComma = true;
+			userTextAfter = trailingCommaMatch[4].trim();
+		} else {
+			dataValue = remaining.trim();
+			hasComma = false;
+			userTextAfter = '';
+		}
+	}
+	
+	return {
+		indent,
+		bullet,
+		checkbox,
+		tag,
+		dataValue,
+		dataQuote,
+		hasComma,
+		userTextAfter,
+		comment
+	};
+}
+
+/**
+ * Searches and parses FORMAT directives for a specific section level pattern scope.
+ */
+function getSectionFormat(namespace, sections, directives) {
+	let bestFormat = null;
+	directives.forEach(dir => {
+		if (dir.kind !== 'marker') return;
+		const match = dir.raw.match(/^🔸\s*(FORMAT|FORMATQ|FORMATC)\s+([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
+		if (!match) return;
+		
+		const formatType = match[1];
+		const pathPattern = match[2].trim();
+		const combinator = match[3] ? match[3].trim() : '>>';
+		
+		const pathSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
+		pathSections.forEach(s => {
+			const isNamespaceInScope = sections.some(sec => sec.namespace === namespace && 
+				(sec.namespace === s.namespace || 
+				(combinator === '>>' && sec.namespace.startsWith(s.namespace + '::')) ||
+				(combinator === '>1>' && sec.parentNamespace === s.namespace && sec.level === s.level + 1) ||
+				(combinator === '>2>' && sec.namespace.startsWith(s.namespace + '::') && sec.level <= s.level + 2)
+			));
+			
+			if (isNamespaceInScope) {
+				if (!bestFormat || s.namespace.length > bestFormat.len) {
+					bestFormat = { type: formatType, len: s.namespace.length };
+				}
+			}
+		});
+	});
+	return bestFormat ? bestFormat.type : null;
+}
+
+/**
+ * Reformats list text data into target section format schemas and adjusts nested indent lines relatively.
+ */
+function adaptLineToSection(lineText, targetFormat, targetLevel, sourceLevel = null) {
+	const parsed = parseMarkdownLine(lineText);
+	if (!parsed.dataValue) return lineText;
+	
+	// 1. Shift indentation or ensure normalized tab spacing
+	let newIndent = parsed.indent;
+	if (sourceLevel !== null && targetLevel !== null) {
+		const diff = targetLevel - sourceLevel;
+		let currentTabs = 0;
+		const leadSpaces = parsed.indent.match(/^( +)/);
+		if (leadSpaces) {
+			const spaceCount = leadSpaces[1].length;
+			currentTabs = Math.max(1, Math.floor(spaceCount / 2));
+		} else {
+			currentTabs = (parsed.indent.match(/\t/g) || []).length;
+		}
+		
+		const targetTabs = Math.max(0, currentTabs + diff);
+		newIndent = '\t'.repeat(targetTabs);
+	} else {
+		const leadSpaces = parsed.indent.match(/^( +)/);
+		if (leadSpaces) {
+			const spaceCount = leadSpaces[1].length;
+			const tabCount = Math.max(1, Math.floor(spaceCount / 2));
+			newIndent = '\t'.repeat(tabCount);
+		}
+	}
+	
+	// 2. Perform layout format re-framing
+	let quotedData = parsed.dataValue;
+	if (targetFormat === 'FORMATQ') {
+		quotedData = `"${parsed.dataValue}"`;
+	} else if (targetFormat === 'FORMATC') {
+		quotedData = `"${parsed.dataValue}",`;
+	} else if (targetFormat === 'FORMAT') {
+		quotedData = parsed.dataValue;
+	} else {
+		// Keep original double quotes/comma wrapping if no format matches
+		if (parsed.dataQuote) {
+			quotedData = `${parsed.dataQuote}${parsed.dataValue}${parsed.dataQuote}${parsed.hasComma ? ',' : ''}`;
+		} else {
+			quotedData = `${parsed.dataValue}${parsed.hasComma ? ',' : ''}`;
+		}
+	}
+	
+	let bulletStr = parsed.bullet;
+	if (!bulletStr && parsed.dataValue) {
+		bulletStr = '- ';
+	}
+	
+	let checkboxStr = parsed.checkbox;
+	let tagStr = parsed.tag;
+	let afterStr = parsed.userTextAfter ? ' ' + parsed.userTextAfter : '';
+	let commentStr = parsed.comment ? ' ' + parsed.comment : '';
+	
+	return `${newIndent}${bulletStr}${checkboxStr}${tagStr}${quotedData}${afterStr}${commentStr}`;
+}
+
+/**
  * Compiles a raw document into a clean structured array graph tree using double colons.
  */
 function parseDocumentSections(document) {
@@ -208,19 +383,24 @@ function harvestActiveDirectives(document) {
 
 	while ((match = directiveRegex.exec(text)) !== null) {
 		const blockText = match[1];
+		const blockStartOffset = match.index + match[0].indexOf(blockText);
 		const lines = blockText.split(/\r?\n/);
 
-		lines.forEach(line => {
+		let currentOffset = blockStartOffset;
+		lines.forEach((line) => {
 			const cleanLine = line.trim();
-			if (!cleanLine || cleanLine.startsWith('//')) return;
+			const lineIdx = document.positionAt(currentOffset).line;
 
-			if (cleanLine.startsWith('EXPORT') || cleanLine.startsWith('IMPORT')) {
-				directives.push({ kind: 'pipeline', raw: cleanLine });
-			} else if (cleanLine.startsWith('FOLLOW')) {
-				directives.push({ kind: 'follow', raw: cleanLine });
-			} else if (cleanLine.startsWith('🔸')) {
-				directives.push({ kind: 'marker', raw: cleanLine });
+			if (cleanLine && !cleanLine.startsWith('//')) {
+				if (cleanLine.startsWith('EXPORT') || cleanLine.startsWith('IMPORT')) {
+					directives.push({ kind: 'pipeline', raw: cleanLine, lineIndex: lineIdx });
+				} else if (cleanLine.startsWith('FOLLOW')) {
+					directives.push({ kind: 'follow', raw: cleanLine, lineIndex: lineIdx });
+				} else if (cleanLine.startsWith('🔸')) {
+					directives.push({ kind: 'marker', raw: cleanLine, lineIndex: lineIdx });
+				}
 			}
+			currentOffset += line.length + 1;
 		});
 	}
 	return directives;
@@ -341,6 +521,105 @@ function evaluateDocumentIntegrity() {
 				if (unsortedCount > 0) {
 					registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
 				}
+			}
+
+			if (ruleType === 'FORMATQ' || ruleType === 'FORMATC' || ruleType === 'FORMAT') {
+				scopedLines.forEach(l => {
+					const parsed = parseMarkdownLine(l.raw);
+					let mismatch = false;
+					if (ruleType === 'FORMATQ') {
+						if (parsed.dataQuote !== '"' || parsed.hasComma) {
+							mismatch = true;
+						}
+					} else if (ruleType === 'FORMATC') {
+						if (parsed.dataQuote !== '"' || !parsed.hasComma) {
+							mismatch = true;
+						}
+					} else if (ruleType === 'FORMAT') {
+						if (parsed.dataQuote !== '' || parsed.hasComma) {
+							mismatch = true;
+						}
+					}
+					if (mismatch) {
+						registerDiagnostic(l.lineIndex, '🔸 ', `❗FORMAT: expected ${ruleType}`);
+					}
+				});
+			}
+		});
+	});
+
+	// Evaluate section-local HTML comments (e.g., <!-- UNIQUE --> or <!-- ALPHA --> or <!-- FORMATQ -->, etc.)
+	sections.forEach(sec => {
+		const localRules = new Set();
+		const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
+		const startLine = sec.lineIndex + 1;
+		const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
+
+		for (let i = startLine; i < endLine; i++) {
+			const text = document.lineAt(i).text.trim();
+			if (text.startsWith('<!--') && text.endsWith('-->')) {
+				const inner = text.substring(4, text.length - 3).trim();
+				if (inner === 'UNIQUE' || inner === 'ALPHA' || inner === 'FORMAT' || inner === 'FORMATQ' || inner === 'FORMATC') {
+					localRules.add(inner);
+				}
+			}
+		}
+
+		const scopedLines = gatherScopedSectionLines(sec, sections, '>>');
+
+		if (localRules.has('UNIQUE')) {
+			const uniqueRegistry = {};
+			scopedLines.forEach(l => {
+				if (!uniqueRegistry[l.clean]) uniqueRegistry[l.clean] = [];
+				uniqueRegistry[l.clean].push(l.lineIndex);
+			});
+
+			Object.keys(uniqueRegistry).forEach(key => {
+				const occurrences = uniqueRegistry[key];
+				if (occurrences.length > 1) {
+					occurrences.forEach(lineIdx => {
+						const humanLineNumbers = occurrences.map(idx => idx + 1).join(', ');
+						registerDiagnostic(lineIdx, '🔸 ', `❗DUPE: lines: ${humanLineNumbers}`);
+					});
+				}
+			});
+		}
+
+		if (localRules.has('ALPHA')) {
+			let unsortedCount = 0;
+			for (let i = 0; i < scopedLines.length - 1; i++) {
+				if (scopedLines[i].clean.localeCompare(scopedLines[i + 1].clean) > 0) {
+					unsortedCount++;
+					registerDiagnostic(scopedLines[i + 1].lineIndex, null, '❗ALPHA: item is out of order');
+				}
+			}
+			if (unsortedCount > 0) {
+				registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
+			}
+		}
+
+		['FORMAT', 'FORMATQ', 'FORMATC'].forEach(fType => {
+			if (localRules.has(fType)) {
+				scopedLines.forEach(l => {
+					const parsed = parseMarkdownLine(l.raw);
+					let mismatch = false;
+					if (fType === 'FORMATQ') {
+						if (parsed.dataQuote !== '"' || parsed.hasComma) {
+							mismatch = true;
+						}
+					} else if (fType === 'FORMATC') {
+						if (parsed.dataQuote !== '"' || !parsed.hasComma) {
+							mismatch = true;
+						}
+					} else if (fType === 'FORMAT') {
+						if (parsed.dataQuote !== '' || parsed.hasComma) {
+							mismatch = true;
+						}
+					}
+					if (mismatch) {
+						registerDiagnostic(l.lineIndex, '🔸 ', `❗FORMAT: expected ${fType}`);
+					}
+				});
 			}
 		});
 	});
@@ -559,8 +838,11 @@ async function executeSectionSortCommand() {
 	await editor.edit(editBuilder => {
 		sortedLines.forEach((lineObj, idx) => {
 			const targetLineIdx = activeSec.contentLines[idx].lineIndex;
-			const targetRange = new vscode.Range(targetLineIdx, 0, targetLineIdx, document.lineAt(targetLineIdx).text.length);
-			editBuilder.replace(targetRange, lineObj.raw);
+			const originalText = activeSec.contentLines[idx].raw;
+			if (originalText !== lineObj.raw) {
+				const targetRange = new vscode.Range(targetLineIdx, 0, targetLineIdx, originalText.length);
+				editBuilder.replace(targetRange, lineObj.raw);
+			}
 		});
 	});
 	vscode.window.setStatusBarMessage(`HELL: Sorted ${sortedLines.length} list elements alphabetically!`, 3000);
@@ -570,8 +852,24 @@ async function executeSectionSortCommand() {
 // --- HELL CORE UTILITIES & ADAPTERS FOR ADVANCED OPERATIONS ---
 
 function getSectionRuleTypes(sec, sections, document) {
-	const directives = harvestActiveDirectives(document);
 	const ruleTypes = new Set();
+
+	// Check local inline comment directives (e.g. <!-- UNIQUE --> or <!-- ALPHA -->)
+	const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
+	const startLine = sec.lineIndex + 1;
+	const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
+
+	for (let i = startLine; i < endLine; i++) {
+		const text = document.lineAt(i).text.trim();
+		if (text.startsWith('<!--') && text.endsWith('-->')) {
+			const inner = text.substring(4, text.length - 3).trim();
+			if (inner === 'UNIQUE' || inner === 'ALPHA' || inner === 'FORMAT' || inner === 'FORMATQ' || inner === 'FORMATC') {
+				ruleTypes.add(inner);
+			}
+		}
+	}
+
+	const directives = harvestActiveDirectives(document);
 	directives.forEach(dir => {
 		if (dir.kind !== 'marker') return;
 		const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)(>>|>1>|>2>|>-2>|>!-2>)?$/);
@@ -630,9 +928,12 @@ async function writeSectionContent(editor, sec, sections, newLines) {
 		textToInsert = '\n' + textToInsert;
 	}
 	
-	await editor.edit(editBuilder => {
-		editBuilder.replace(range, textToInsert);
-	});
+	const existingText = document.getText(range);
+	if (existingText !== textToInsert) {
+		await editor.edit(editBuilder => {
+			editBuilder.replace(range, textToInsert);
+		});
+	}
 	
 	evaluateDocumentIntegrity();
 }
@@ -687,22 +988,39 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 		insertMode = modeChoice.value;
 	}
 	
+	const directives = harvestActiveDirectives(document);
+	const targetFormat = getSectionFormat(targetSec.namespace, sections, directives);
+
 	const originalLines = targetSec.contentLines.map(l => l.raw);
 	let resultLines = [...originalLines];
 	
 	for (const item of items) {
 		const rawText = typeof item === 'string' ? item : (item && item.text ? item.text : String(item));
-		const cleanVal = tokenizeLine(rawText);
+		
+		const activeLineIndex = item && typeof item.lineIndex === 'number' ? item.lineIndex : -1;
+		let sourceSec = null;
+		if (activeLineIndex !== -1) {
+			sourceSec = [...sections].reverse().find(s => s.lineIndex <= activeLineIndex);
+		}
+
+		let adaptedText = rawText;
+		if (sourceSec) {
+			adaptedText = adaptLineToSection(rawText, targetFormat, targetSec.level, sourceSec.level);
+		} else {
+			adaptedText = adaptLineToSection(rawText, targetFormat, targetSec.level, null);
+		}
+
+		const cleanVal = tokenizeLine(adaptedText);
 		
 		if (insertMode === "merge" || rules.has("UNIQUE") || rules.has("ALPHA")) {
 			const exists = resultLines.some(l => tokenizeLine(l) === cleanVal);
 			if (!exists) {
-				resultLines.push(rawText);
+				resultLines.push(adaptedText);
 			}
 		} else if (insertMode === "prepend") {
-			resultLines.unshift(rawText);
+			resultLines.unshift(adaptedText);
 		} else {
-			resultLines.push(rawText);
+			resultLines.push(adaptedText);
 		}
 	}
 	
@@ -1403,36 +1721,88 @@ async function executeSectionExportCommand() {
 
 async function executeSectionIntersectCommand() {
 	const editor = vscode.window.activeTextEditor;
-	if (!editor) { return; }
+	if (!editor) return;
 
 	const sections = parseDocumentSections(editor.document);
-	if (sections.length === 0) { return; }
+	if (sections.length === 0) return;
 
-	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
-	const pickerItems = sortedSections.map(s => ({ label: s.namespace, description: `Heading line ${s.lineIndex + 1}` }));
+	const stack = new PickerStack();
 
-	const quickPick = vscode.window.createQuickPick();
-	quickPick.items = pickerItems;
-	quickPick.canSelectMany = true;
-	quickPick.title = "🧠 INTERSECT: Step 1 - Choose multiple sections to intersect";
+	let selectedSections = [];
+	let uniqueMode = "all";
+	let sortOrder = "original";
 
-	quickPick.onDidAccept(async () => {
-		const selected = quickPick.selectedItems;
-		if (selected.length === 0) {
+	const runStep1 = async () => {
+		stack.push(runStep1);
+		const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+		const pickerItems = sortedSections.map(s => ({ label: s.namespace, description: `Heading line ${s.lineIndex + 1}` }));
+
+		const quickPick = vscode.window.createQuickPick();
+		quickPick.items = pickerItems;
+		quickPick.canSelectMany = true;
+		quickPick.title = "🧠 INTERSECT: Step 1 - Choose multiple sections to intersect";
+
+		quickPick.onDidAccept(async () => {
+			selectedSections = quickPick.selectedItems;
 			quickPick.dispose();
+			if (selectedSections.length === 0) {
+				return;
+			}
+			await runStep2();
+		});
+		quickPick.show();
+	};
+
+	const runStep2 = async () => {
+		stack.push(runStep2);
+		const modeChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+			{ label: "Unique elements", value: "unique", description: "Keep only unique lines across the intersect results" },
+			{ label: "Keep duplicates", value: "all", description: "Keep duplicates if present in all sections" }
+		]), { placeHolder: "INTERSECT: Select elements uniqueness filter" });
+
+		if (stack.handleBackSelection(modeChoice)) {
 			return;
 		}
-		quickPick.dispose();
+		if (!modeChoice) {
+			return;
+		}
+		uniqueMode = modeChoice.value;
+		await runStep3();
+	};
 
-		const actionChoice = await vscode.window.showQuickPick([
+	const runStep3 = async () => {
+		stack.push(runStep3);
+		const sortChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+			{ label: "Keep original order", value: "original", description: "Maintain existing document line sequence" },
+			{ label: "Sort alphabetically (A-Z)", value: "alpha", description: "Sort final results in alphabetical order" }
+		]), { placeHolder: "INTERSECT: Select sort ordering layout" });
+
+		if (stack.handleBackSelection(sortChoice)) {
+			return;
+		}
+		if (!sortChoice) {
+			return;
+		}
+		sortOrder = sortChoice.value;
+		await runStep4();
+	};
+
+	const runStep4 = async () => {
+		stack.push(runStep4);
+		const actionChoice = await vscode.window.showQuickPick(stack.injectBackItem([
 			{ label: "📋 Copy Intersection Set Array", value: "copy" },
 			{ label: "💉 Inject Intersection Elements Below Cursor", value: "inject" }
-		], { placeHolder: "⚡ Step 2: Choose execution method for intersection results" });
+		]), { placeHolder: "INTERSECT: Choose final execution method for intersection results" });
 
-		if (!actionChoice) { return; }
+		if (stack.handleBackSelection(actionChoice)) {
+			return;
+		}
+		if (!actionChoice) {
+			return;
+		}
 
-		// Gather lines from each selected section
-		const sectionLinesMap = selected.map(item => {
+		// Gather elements from each selected section
+		const sectionLinesMap = selectedSections.map(item => {
 			const targetNode = sections.find(s => s.namespace === item.label);
 			return targetNode ? targetNode.contentLines : [];
 		});
@@ -1445,24 +1815,38 @@ async function executeSectionIntersectCommand() {
 				const existsInAll = sectionLinesMap.slice(1).every(linesArray => 
 					linesArray.some(otherL => otherL.clean === l.clean)
 				);
-				if (existsInAll && !intersectLines.some(existing => existing.clean === l.clean)) {
-					intersectLines.push(l);
+				if (existsInAll) {
+					intersectLines.push(l.raw);
 				}
 			});
 		}
 
-		const finalRawLines = intersectLines.map(l => l.raw);
+		let finalLines = intersectLines;
+		if (uniqueMode === "unique") {
+			const seen = new Set();
+			finalLines = finalLines.filter(line => {
+				const cl = tokenizeLine(line);
+				if (seen.has(cl)) return false;
+				seen.add(cl);
+				return true;
+			});
+		}
+
+		if (sortOrder === "alpha") {
+			finalLines.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
+		}
 
 		if (actionChoice.value === "copy") {
-			await vscode.env.clipboard.writeText(finalRawLines.join('\n'));
-			vscode.window.showInformationMessage(`HELL: Saved intersection result [${finalRawLines.length} lines] to clipboard!`);
+			await vscode.env.clipboard.writeText(finalLines.join('\n'));
+			vscode.window.showInformationMessage(`HELL: Saved intersection result [${finalLines.length} lines] to clipboard!`);
 		} else {
 			const insertPos = new vscode.Position(editor.selection.active.line + 1, 0);
-			await editor.edit(editBuilder => { editBuilder.insert(insertPos, finalRawLines.join('\n') + '\n'); });
-			handleFollowFocusRouting(editor, insertPos.line, selected[0]?.label);
+			await editor.edit(editBuilder => editBuilder.insert(insertPos, finalLines.join('\n') + '\n'));
+			handleFollowFocusRouting(editor, insertPos.line, selectedSections[0]?.label);
 		}
-	});
-	quickPick.show();
+	};
+
+	await runStep1();
 }
 
 async function executeItemRemoveFromSectionsCommand() {
@@ -1547,53 +1931,71 @@ async function executeItemInjectToSectionsCommand() {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) { return; }
 
-	const sections = parseDocumentSections(editor.document);
-	if (sections.length === 0) { return; }
-
-	const selectSections = await vscode.window.showQuickPick(sections.map(s => ({
-		label: s.namespace,
-		section: s
-	})), { canPickMany: true, placeHolder: "Step 1: Choose destination sections to inject items into" });
-
-	if (!selectSections || selectSections.length === 0) { return; }
-
+	// Choice 1: Choose item source
 	const selectedText = editor.document.getText(editor.selection);
 	let txtToInject = "";
+	let linesToInject = [];
 
-	if (selectedText.trim()) {
-		const textChoice = await vscode.window.showQuickPick([
-			{ label: "Use active selection text", value: "selection" },
-			{ label: "Enter manual custom text...", value: "manual" }
-		], { placeHolder: "Step 2: Choose item source text" });
+	const sourceChoice = await vscode.window.showQuickPick([
+		{ label: "Use active selection/items", value: "selection", description: selectedText ? `"${selectedText.substring(0, 30)}..."` : "Current text selection" },
+		{ label: "Enter manual custom text...", value: "manual" }
+	], { placeHolder: "INJECT Choice 1: Choose item source text" });
 
-		if (!textChoice) { return; }
-		if (textChoice.value === "selection") {
+	if (!sourceChoice) { return; }
+
+	if (sourceChoice.value === "selection") {
+		if (!selectedText.trim()) {
+			const currentLineText = editor.document.lineAt(editor.selection.active.line).text;
+			if (!currentLineText.trim()) {
+				vscode.window.showWarningMessage("HELL: No active text select or non-empty line under cursor.");
+				return;
+			}
+			txtToInject = currentLineText;
+		} else {
 			txtToInject = selectedText;
 		}
-	}
-
-	if (!txtToInject) {
+	} else {
 		const input = await vscode.window.showInputBox({
-			prompt: "Step 2: Enter item text to inject (supports multi-line or bullet/comma listed text)"
+			prompt: "INJECT Choice 1: Enter custom item text to inject"
 		});
 		if (!input) { return; }
 		txtToInject = input;
 	}
 
+	linesToInject = txtToInject.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+	if (linesToInject.length === 0) {
+		vscode.window.showWarningMessage("HELL: No items to inject.");
+		return;
+	}
+
+	// Choice 2: Destination sections to inject into
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) {
+		vscode.window.showWarningMessage("HELL: No sections found in the current document.");
+		return;
+	}
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const selectSections = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { canPickMany: true, placeHolder: "INJECT Choice 2: Choose destination sections to inject items into" });
+
+	if (!selectSections || selectSections.length === 0) { return; }
+
+	// Choice 3: Location mode
 	const modeChoice = await vscode.window.showQuickPick([
 		{ label: "Prepend", value: "prepend", description: "Insert as the first item of each section" },
 		{ label: "Append", value: "append", description: "Insert as the last item of each section" },
 		{ label: "Merge", value: "merge", description: "Insert only if the clean text is not already present" }
-	], { placeHolder: "Step 3: Select injection location mode" });
+	], { placeHolder: "INJECT Choice 3: Choose injection location mode" });
 
 	if (!modeChoice) { return; }
-
 	const mode = modeChoice.value;
-	const lines = txtToInject.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
 	for (const choice of selectSections) {
 		const targetSec = choice.section;
-		await relocateItem(editor, lines, targetSec, 'copy', mode);
+		await relocateItem(editor, linesToInject, targetSec, 'copy', mode);
 	}
 	evaluateDocumentIntegrity();
 }
@@ -1608,13 +2010,14 @@ async function executeSectionsSortCommand() {
 
 	const parents = new Set();
 	sections.forEach(s => {
-		if (s.parentNamespace) {
-			parents.add(s.parentNamespace);
+		const hasChildren = sections.some(other => other.parentNamespace === s.namespace);
+		if (hasChildren) {
+			parents.add(s.namespace);
 		}
 	});
 
 	const parentChoices = [{ label: "Root (Top Level headings)", value: null }];
-	Array.from(parents).forEach(p => {
+	Array.from(parents).sort().forEach(p => {
 		parentChoices.push({ label: String(p), value: p });
 	});
 
@@ -1665,12 +2068,175 @@ async function executeSectionsSortCommand() {
 		const indices = childBlocks.map((_, i) => i).sort((idxA, idxB) => childBlocks[idxB].startLine - childBlocks[idxA].startLine);
 		indices.forEach(idx => {
 			const originalRange = childBlocks[idx].range;
+			const originalBlockText = childBlocks[idx].text;
 			const targetBlockText = sortedBlocks[idx].text;
-			editBuilder.replace(originalRange, targetBlockText);
+			if (originalBlockText !== targetBlockText) {
+				editBuilder.replace(originalRange, targetBlockText);
+			}
 		});
 	});
 
 	vscode.window.showInformationMessage("HELL: Ordered child sections alphabetically!");
+	evaluateDocumentIntegrity();
+}
+
+/**
+ * Reusable utility that injects or registers metadata directives in document comments blocks.
+ */
+async function insertDirectiveIntoDocument(type, sectionNamespace, suffix = ">>") {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const document = editor.document;
+	const directiveLine = `🔸 ${type} ${sectionNamespace} ${suffix}`;
+
+	const text = document.getText();
+	const blockMatch = /<!--\s*HELL:\s*(?:SAMPLE\s+)?DIRECTIVES([\s\S]*?)-->/i.exec(text);
+
+	if (blockMatch) {
+		const matchIndex = blockMatch.index;
+		const innerContent = blockMatch[1];
+		const openingMatch = text.substring(matchIndex).match(/<!--\s*HELL:\s*(?:SAMPLE\s+)?DIRECTIVES/i);
+		const insertOffset = matchIndex + openingMatch[0].length;
+		const insertPos = document.positionAt(insertOffset);
+
+		await editor.edit(editBuilder => {
+			editBuilder.insert(insertPos, `\n${directiveLine}`);
+		});
+	} else {
+		const prependText = `<!-- HELL:DIRECTIVES\n${directiveLine}\n-->\n\n`;
+		const insertPos = new vscode.Position(0, 0);
+		await editor.edit(editBuilder => {
+			editBuilder.insert(insertPos, prependText);
+		});
+	}
+	evaluateDocumentIntegrity();
+}
+
+async function executeFormatAddCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+
+	// Choice 1: Ask user for format type
+	const formatChoice = await vscode.window.showQuickPick([
+		{ label: "FORMAT: raw data (unquoted, no comma)", value: "FORMAT" },
+		{ label: "FORMATQ: quoted keys (double quoted, no comma)", value: "FORMATQ" },
+		{ label: "FORMATC: JSON list elements (double quoted with terminal comma)", value: "FORMATC" }
+	], { placeHolder: "FORMAT: Choice 1 - Select format serialization style" });
+
+	if (!formatChoice) return;
+	const formatType = formatChoice.value;
+
+	// Choice 2: Select target section namespace
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const targetChoice = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { placeHolder: "FORMAT: Choice 2 - Select target heading namespace" });
+
+	if (!targetChoice) return;
+	const targetNamespace = targetChoice.section.namespace;
+
+	// Choice 3: Choose combinational scope
+	const scopeChoice = await vscode.window.showQuickPick([
+		{ label: "Recursive descendants (>>)", value: ">>" },
+		{ label: "Immediate level-1 children only (>1>)", value: ">1>" },
+		{ label: "Children and grandchildren (>2>)", value: ">2>" },
+		{ label: "Grandchildren and below (>-2>)", value: ">-2>" },
+		{ label: "Grandchildren down excl. parent (>!-2>)", value: ">!-2>" }
+	], { placeHolder: "FORMAT: Choice 3 - Select hierarchical scope combinator" });
+
+	if (!scopeChoice) return;
+	const scopeCombinator = scopeChoice.value;
+
+	// Add the directive to document
+	await insertDirectiveIntoDocument(formatType, targetNamespace, scopeCombinator);
+	vscode.window.showInformationMessage(`Successfully registered ${formatType} directive for ${targetNamespace} ${scopeCombinator}`);
+}
+
+async function executeFormatRemoveCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const directives = harvestActiveDirectives(document);
+	
+	// Filter format directives
+	const formatDirectives = directives.filter(dir => {
+		if (dir.kind !== 'marker') return false;
+		return /^🔸\s*(FORMAT|FORMATQ|FORMATC)\s+/.test(dir.raw);
+	});
+
+	if (formatDirectives.length === 0) {
+		vscode.window.showInformationMessage("HELL: No formatting directives found in the current document.");
+		return;
+	}
+
+	const choices = formatDirectives.map(dir => ({
+		label: dir.raw,
+		directive: dir
+	}));
+
+	const selected = await vscode.window.showQuickPick(choices, {
+		canPickMany: true,
+		placeHolder: "Choose formatting directives to remove"
+	});
+
+	if (!selected || selected.length === 0) return;
+
+	// Remove selected directives from document
+	const sortedToDelete = [...selected].sort((a, b) => b.directive.lineIndex - a.directive.lineIndex);
+
+	await editor.edit(editBuilder => {
+		sortedToDelete.forEach(item => {
+			const idx = item.directive.lineIndex;
+			editBuilder.delete(new vscode.Range(idx, 0, idx + 1, 0));
+		});
+	});
+
+	evaluateDocumentIntegrity();
+	vscode.window.showInformationMessage(`Successfully removed ${selected.length} formatting directives.`);
+}
+
+async function executeSectionsSortChildItemsCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+
+	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+	const choice = await vscode.window.showQuickPick(sortedSections.map(s => ({
+		label: s.namespace,
+		section: s
+	})), { placeHolder: "Select section to sort child items alphabetically" });
+
+	if (!choice) return;
+
+	const targetSec = choice.section;
+	if (targetSec.contentLines.length === 0) {
+		vscode.window.showInformationMessage(`HELL: Section '${targetSec.namespace}' has no items.`);
+		return;
+	}
+
+	const sortedLines = [...targetSec.contentLines].sort((a, b) => a.clean.localeCompare(b.clean));
+
+	await editor.edit(editBuilder => {
+		sortedLines.forEach((lineObj, idx) => {
+			const targetLineIdx = targetSec.contentLines[idx].lineIndex;
+			const originalText = targetSec.contentLines[idx].raw;
+			if (originalText !== lineObj.raw) {
+				const targetRange = new vscode.Range(targetLineIdx, 0, targetLineIdx, originalText.length);
+				editBuilder.replace(targetRange, lineObj.raw);
+			}
+		});
+	});
+
+	vscode.window.showInformationMessage(`Successfully sorted child items of section '${targetSec.namespace}'!`);
 	evaluateDocumentIntegrity();
 }
 
@@ -1726,41 +2292,37 @@ async function executeAddDirectiveCommand(type) {
 	const choice = await vscode.window.showQuickPick(sortedSections.map(s => ({
 		label: s.namespace,
 		section: s
-	})), { placeHolder: `Choose section to add 🔸 ${type} directive for` });
+	})), { placeHolder: `Choose section to add <!-- ${type} --> directive for` });
 
 	if (!choice) { return; }
 
-	const sectionNamespace = choice.section.namespace;
-	const directiveLine = `🔸 ${type} ${sectionNamespace} >>`;
+	const sec = choice.section;
+	const startLine = sec.lineIndex + 1;
+	const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
+	const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
 
-	const text = document.getText();
-	const blockMatch = /<!--\s*HELL:\s*(?:SAMPLE\s+)?DIRECTIVES([\s\S]*?)-->/i.exec(text);
-
-	if (blockMatch) {
-		const matchIndex = blockMatch.index;
-		const innerContent = blockMatch[1];
-		const openingMatch = text.substring(matchIndex).match(/<!--\s*HELL:\s*(?:SAMPLE\s+)?DIRECTIVES/i);
-		const insertOffset = matchIndex + openingMatch[0].length;
-		const insertPos = document.positionAt(insertOffset);
-
-		const regex = new RegExp(`🔸\\s*${type}\\s+${sectionNamespace.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\s*(>>|>1>|>2>|>-2>|>!-2>)?`, 'i');
-		if (regex.test(innerContent)) {
-			vscode.window.showInformationMessage(`HELL: Directive for ${sectionNamespace} already exists.`);
-			return;
+	// Check if already present on first few lines of the section content
+	let found = false;
+	for (let i = startLine; i < endLine; i++) {
+		const text = document.lineAt(i).text.trim();
+		if (text === `<!-- ${type} -->`) {
+			found = true;
+			break;
 		}
-
-		await editor.edit(editBuilder => {
-			editBuilder.insert(insertPos, `\n${directiveLine}`);
-		});
-		vscode.window.showInformationMessage(`HELL: Prepend directive to active HTML block comment!`);
-	} else {
-		const prependText = `<!-- HELL:DIRECTIVES\n${directiveLine}\n-->\n\n`;
-		const insertPos = new vscode.Position(0, 0);
-		await editor.edit(editBuilder => {
-			editBuilder.insert(insertPos, prependText);
-		});
-		vscode.window.showInformationMessage(`HELL: Stamped fresh configuration header at top of file!`);
 	}
+
+	if (found) {
+		vscode.window.showInformationMessage(`HELL: Directive <!-- ${type} --> already exists in section '${sec.namespace}'.`);
+		return;
+	}
+
+	// Insert the comment right below the header line
+	const insertPos = new vscode.Position(startLine, 0);
+	await editor.edit(editBuilder => {
+		editBuilder.insert(insertPos, `<!-- ${type} -->\n`);
+	});
+
+	vscode.window.showInformationMessage(`Successfully added <!-- ${type} --> directive to section '${sec.namespace}'.`);
 	evaluateDocumentIntegrity();
 }
 
@@ -1772,6 +2334,7 @@ async function executeItemYankCommand() {
 	const sections = parseDocumentSections(document);
 	if (sections.length === 0) { return; }
 
+	// Step 1: Picker - From sections
 	const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
 	const selectSourceSections = await vscode.window.showQuickPick(sortedSections.map(s => ({
 		label: s.namespace,
@@ -1780,138 +2343,174 @@ async function executeItemYankCommand() {
 
 	if (!selectSourceSections || selectSourceSections.length === 0) { return; }
 
-	const depthChoice = await vscode.window.showQuickPick([
-		{ label: "This section only (no children)", value: "self" },
-		{ label: "Recursive descendants (>>)", value: ">>" },
-		{ label: "Immediate level-1 children only (>1>)", value: ">1>" },
-		{ label: "Children and grandchildren (>2>)", value: ">2>" }
-	], { placeHolder: "YANK Step 2: Choose source hierarchy scope/depth" });
-
-	if (!depthChoice) { return; }
-
 	let allSourceLines = [];
-	selectSourceSections.forEach(choice => {
-		const targetNodes = sections.filter(s => {
-			if (depthChoice.value === "self") {
-				return s.namespace === choice.section.namespace;
-			} else if (depthChoice.value === ">>") {
-				return s.namespace === choice.section.namespace || s.namespace.startsWith(choice.section.namespace + '::');
-			} else if (depthChoice.value === ">1>") {
-				return s.namespace === choice.section.namespace || (s.parentNamespace === choice.section.namespace && s.level === choice.section.level + 1);
-			} else if (depthChoice.value === ">2>") {
-				return s.namespace === choice.section.namespace || (s.namespace.startsWith(choice.section.namespace + '::') && s.level <= choice.section.level + 2);
-			}
-			return false;
-		});
 
-		targetNodes.forEach(node => {
-			node.contentLines.forEach(lineObj => {
-				allSourceLines.push(lineObj);
+	// Step 2: For each section, select hierarchy child depth OR specific items
+	for (const choice of selectSourceSections) {
+		const sec = choice.section;
+		const methodChoice = await vscode.window.showQuickPick([
+			{ label: "This section only (no children)", value: "self" },
+			{ label: "Recursive descendants (>>)", value: ">>" },
+			{ label: "Immediate level-1 children only (>1>)", value: ">1>" },
+			{ label: "Children and grandchildren (>2>)", value: ">2>" },
+			{ label: "Grandchildren and below (>-2>)", value: ">-2>" },
+			{ label: "Grandchildren down excl. parent (>!-2>)", value: ">!-2>" },
+			{ label: "👉 Choose specific items...", value: "items" }
+		], { placeHolder: `YANK Step 2: Choose scope for section '${sec.namespace}'` });
+
+		if (!methodChoice) return;
+
+		if (methodChoice.value === "items") {
+			if (sec.contentLines.length === 0) {
+				vscode.window.showWarningMessage(`Section '${sec.namespace}' has no items.`);
+				continue;
+			}
+			const itemChoices = sec.contentLines.map(lineObj => ({
+				label: lineObj.raw,
+				lineObj: lineObj
+			}));
+			const chosenSecItems = await vscode.window.showQuickPick(itemChoices, {
+				canPickMany: true,
+				placeHolder: `Select specific items to yank from '${sec.namespace}'`
 			});
-		});
-	});
+			if (!chosenSecItems || chosenSecItems.length === 0) continue;
+			allSourceLines.push(...chosenSecItems.map(item => item.lineObj));
+		} else {
+			const targetNodes = sections.filter(s => {
+				const cm = methodChoice.value;
+				if (cm === "self") {
+					return s.namespace === sec.namespace;
+				} else if (cm === ">>") {
+					return s.namespace === sec.namespace || s.namespace.startsWith(sec.namespace + '::');
+				} else if (cm === ">1>") {
+					return s.namespace === sec.namespace || (s.parentNamespace === sec.namespace && s.level === sec.level + 1);
+				} else if (cm === ">2>") {
+					return s.namespace === sec.namespace || (s.namespace.startsWith(sec.namespace + '::') && s.level <= sec.level + 2);
+				} else if (cm === ">-2>") {
+					return s.namespace.startsWith(sec.namespace + '::') && s.level >= sec.level + 2;
+				} else if (cm === ">!-2>") {
+					return s.namespace.startsWith(sec.namespace + '::') && s.level > sec.level + 2;
+				}
+				return false;
+			});
+			targetNodes.forEach(node => {
+				allSourceLines.push(...node.contentLines);
+			});
+		}
+	}
 
 	if (allSourceLines.length === 0) {
-		vscode.window.showInformationMessage("HELL: No lines found in selected source scopes.");
+		vscode.window.showInformationMessage("HELL: No lines collected.");
 		return;
 	}
 
-	const itemsPickerItems = allSourceLines.map(lineObj => ({
-		label: lineObj.raw,
-		lineObj: lineObj
-	}));
+	// Step 3: Picker - Flatten
+	const flattenChoice = await vscode.window.showQuickPick([
+		{ label: "Flatten (Remove indentation levels)", value: "yes" },
+		{ label: "Preserve nesting hierarchy", value: "no" }
+	], { placeHolder: "YANK Step 3: Flatten sections/items hierarchy?" });
 
-	const itemsQuickPick = vscode.window.createQuickPick();
-	itemsQuickPick.items = itemsPickerItems;
-	itemsQuickPick.canSelectMany = true;
-	itemsQuickPick.title = "YANK Step 3: Select specific items to yank (cut)";
+	if (!flattenChoice) return;
+	const doFlatten = flattenChoice.value === "yes";
 
-	itemsQuickPick.onDidAccept(async () => {
-		const chosenYankItems = itemsQuickPick.selectedItems;
-		if (chosenYankItems.length === 0) {
-			itemsQuickPick.dispose();
+	// Step 4: Picker - Sort
+	const sortChoice = await vscode.window.showQuickPick([
+		{ label: "Keep original order", value: "normal" },
+		{ label: "Sort alphabetically A-Z (Sorts on data, not literal line)", value: "alpha" }
+	], { placeHolder: "YANK Step 4: Sort items?" });
+
+	if (!sortChoice) return;
+	const doSort = sortChoice.value === "alpha";
+
+	// Step 5: Picker - Unique
+	const uniqueChoice = await vscode.window.showQuickPick([
+		{ label: "Keep duplicates", value: "all" },
+		{ label: "Unique items only (deduplicate on token data)", value: "unique" }
+	], { placeHolder: "YANK Step 5: Filter duplicates?" });
+
+	if (!uniqueChoice) return;
+	const doUnique = uniqueChoice.value === "unique";
+
+	// Apply filtering/sorting
+	let processedItems = [...allSourceLines];
+	if (doUnique) {
+		const seen = new Set();
+		processedItems = processedItems.filter(item => {
+			const cl = tokenizeLine(item.raw);
+			if (seen.has(cl)) return false;
+			seen.add(cl);
+			return true;
+		});
+	}
+	if (doSort) {
+		processedItems.sort((a, b) => tokenizeLine(a.raw).localeCompare(tokenizeLine(b.raw)));
+	}
+
+	// Step 6: Picker - Inject or Copy
+	const targetChoice = await vscode.window.showQuickPick([
+		{ label: "💉 Inject (Cut from source, insert in active section)", value: "inject" },
+		{ label: "📋 Copy (Copy to clipboard, keep at source)", value: "copy" }
+	], { placeHolder: "YANK Step 6: Choose destination target" });
+
+	if (!targetChoice) return;
+
+	if (targetChoice.value === "copy") {
+		const rawLineTexts = processedItems.map(item => item.raw);
+		await vscode.env.clipboard.writeText(rawLineTexts.join('\n'));
+		vscode.window.showInformationMessage(`HELL: Copied ${rawLineTexts.length} items to clipboard!`);
+	} else {
+		// Identify active section under cursor
+		const cursorLine = editor.selection.active.line;
+		const activeSec = [...sections].reverse().find(s => s.lineIndex <= cursorLine);
+		if (!activeSec) {
+			vscode.window.showWarningMessage("HELL: Please place cursor inside a active section first.");
 			return;
 		}
-		itemsQuickPick.dispose();
 
-		const sortChoice = await vscode.window.showQuickPick([
-			{ label: "Normal order (as they appear)", value: "normal" },
-			{ label: "Sort alphabetically (A-Z)", value: "alpha" }
-		], { placeHolder: "YANK Step 4: Do you want to sort the yanked items?" });
+		// Step 7: Picker - Prepend, Append, Merge
+		const injectModeChoice = await vscode.window.showQuickPick([
+			{ label: "Prepend", value: "prepend" },
+			{ label: "Append", value: "append" },
+			{ label: "Merge", value: "merge" }
+		], { placeHolder: `YANK Step 7: Insertion mode for '${activeSec.namespace}'` });
 
-		if (!sortChoice) { return; }
+		if (!injectModeChoice) return;
 
-		const uniqueChoice = await vscode.window.showQuickPick([
-			{ label: "Keep duplicates", value: "all" },
-			{ label: "Unique items only", value: "unique" }
-		], { placeHolder: "YANK Step 5: Filter duplicates?" });
-
-		if (!uniqueChoice) { return; }
-
-		let finalYankLines = chosenYankItems.map(item => item.lineObj);
-		if (uniqueChoice.value === "unique") {
-			const seenClean = new Set();
-			finalYankLines = finalYankLines.filter(lineObj => {
-				if (seenClean.has(lineObj.clean)) { return false; }
-				seenClean.add(lineObj.clean);
-				return true;
+		// Perform cut: Delete the yanked lines from their original source indices
+		const sortedLineIndicesToDelete = processedItems.map(it => it.lineIndex).sort((a, b) => b - a);
+		await editor.edit(editBuilder => {
+			sortedLineIndicesToDelete.forEach(lineIdx => {
+				editBuilder.delete(new vscode.Range(lineIdx, 0, lineIdx + 1, 0));
 			});
-		}
-		if (sortChoice.value === "alpha") {
-			finalYankLines.sort((a, b) => a.clean.localeCompare(b.clean));
-		}
+		});
 
-		const actionChoice = await vscode.window.showQuickPick([
-			{ label: "📋 Copy to Clipboard", value: "copy" },
-			{ label: "💉 Inject into Section", value: "inject" }
-		], { placeHolder: "YANK Step 6: Choose target execution action" });
-
-		if (!actionChoice) { return; }
-
-		const textsToInsert = finalYankLines.map(lineObj => lineObj.raw);
-
-		if (actionChoice.value === "copy") {
-			await vscode.env.clipboard.writeText(textsToInsert.join('\n'));
-			await editor.edit(editBuilder => {
-				const sortedLinesToDelete = finalYankLines.map(l => l.lineIndex).sort((a, b) => b - a);
-				sortedLinesToDelete.forEach(lineIdx => {
-					editBuilder.delete(new vscode.Range(lineIdx, 0, lineIdx + 1, 0));
-				});
-			});
-			vscode.window.showInformationMessage(`HELL: Yanked (cut) ${textsToInsert.length} items to clipboard!`);
-		} else {
-			const cursorLine = editor.selection.active.line;
-			const activeSec = [...sections].reverse().find(s => s.lineIndex <= cursorLine);
-			if (!activeSec) {
-				vscode.window.showWarningMessage("HELL: Please place cursor inside a valid section first.");
-				return;
-			}
-
-			const relocateModeChoice = await vscode.window.showQuickPick([
-				{ label: "Prepend to Section", value: "prepend" },
-				{ label: "Append to Section", value: "append" },
-				{ label: "Merge into Section (No duplicates)", value: "merge" }
-			], { placeHolder: `YANK Step 7: Relocate Mode for injecting into '${activeSec.namespace}'` });
-
-			if (!relocateModeChoice) { return; }
-
-			await editor.edit(editBuilder => {
-				const sortedLinesToDelete = finalYankLines.map(l => l.lineIndex).sort((a, b) => b - a);
-				sortedLinesToDelete.forEach(lineIdx => {
-					editBuilder.delete(new vscode.Range(lineIdx, 0, lineIdx + 1, 0));
-				});
+		// Now write the items into the active section.
+		const freshSections = parseDocumentSections(editor.document);
+		const freshActiveSec = freshSections.find(s => s.namespace === activeSec.namespace);
+		if (freshActiveSec) {
+			const itemsToRelocate = processedItems.map(orig => {
+				const rawText = orig.raw;
+				let itemWithNestingObj = { text: rawText, lineIndex: -1 };
+				if (!doFlatten) {
+					const directives = harvestActiveDirectives(document);
+					const targetFormat = getSectionFormat(freshActiveSec.namespace, freshSections, directives);
+					const sourceSec = [...sections].reverse().find(s => s.lineIndex <= orig.lineIndex);
+					let sourceLevel = sourceSec ? sourceSec.level : null;
+					
+					itemWithNestingObj.text = adaptLineToSection(rawText, targetFormat, freshActiveSec.level, sourceLevel);
+				} else {
+					const directives = harvestActiveDirectives(document);
+					const targetFormat = getSectionFormat(freshActiveSec.namespace, freshSections, directives);
+					itemWithNestingObj.text = adaptLineToSection(rawText, targetFormat, freshActiveSec.level, null);
+				}
+				return itemWithNestingObj;
 			});
 
-			const freshSections = parseDocumentSections(editor.document);
-			const freshActiveSec = freshSections.find(s => s.namespace === activeSec.namespace);
-			if (freshActiveSec) {
-				await relocateItem(editor, textsToInsert, freshActiveSec, 'copy', relocateModeChoice.value);
-			}
-			vscode.window.showInformationMessage(`HELL: Successfully yanked (cut and moved) chosen items to section '${activeSec.namespace}'!`);
+			await relocateItem(editor, itemsToRelocate, freshActiveSec, 'copy', injectModeChoice.value);
 		}
-		evaluateDocumentIntegrity();
-	});
-	itemsQuickPick.show();
+		vscode.window.showInformationMessage(`HELL: Successfully yanked (cut and injected) ${processedItems.length} items into section '${activeSec.namespace}'!`);
+	}
+	evaluateDocumentIntegrity();
 }
 
 /**
@@ -1927,79 +2526,114 @@ function registerInteractivePipelines(context) {
 		const sections = parseDocumentSections(editor.document);
 		if (sections.length === 0) return;
 
+		const stack = new PickerStack();
+
+		let selectedSections = [];
+		let uniqueMode = "all";
+		let sortOrder = "original";
+
 		const runStep1 = async () => {
 			stack.push(runStep1);
 			const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
 			const pickerItems = sortedSections.map(s => ({ label: s.namespace, description: `Heading line ${s.lineIndex + 1}` }));
 
 			const quickPick = vscode.window.createQuickPick();
-			quickPick.items = stack.injectBackItem(pickerItems);
+			quickPick.items = pickerItems;
 			quickPick.canSelectMany = true;
 			quickPick.title = "🧠 UNION: Step 1 - Choose multiple sections to blend";
 
 			quickPick.onDidAccept(async () => {
-				const selected = quickPick.selectedItems;
-				if (selected.length === 0) {
-					quickPick.dispose();
+				selectedSections = quickPick.selectedItems;
+				quickPick.dispose();
+				if (selectedSections.length === 0) {
 					return;
 				}
-				quickPick.dispose();
-
-				const runStepModeChoice = async () => {
-					stack.push(runStepModeChoice);
-					const modeChoice = await vscode.window.showQuickPick(stack.injectBackItem([
-						{ label: "Unique (Default)", value: "unique", description: "Keep only unique lines across the chosen sections" },
-						{ label: "All", value: "all", description: "Keep all lines, including duplicate entries" }
-					]), { placeHolder: "Choose whether to keep only unique lines or all lines" });
-
-					if (stack.handleBackSelection(modeChoice)) {
-						return;
-					}
-					if (!modeChoice) {
-						return;
-					}
-
-					const chooseMode = modeChoice.value;
-
-					const runStep2 = async () => {
-						stack.push(runStep2);
-						const actionChoice = await vscode.window.showQuickPick(stack.injectBackItem([
-							{ label: "📋 Copy Union Set Array", value: "copy" },
-							{ label: "💉 Inject Union Elements Below Cursor", value: "inject" }
-						]), { placeHolder: "⚡ Step 2: Choose execution method for union layout arrays" });
-
-						if (stack.handleBackSelection(actionChoice)) {
-							return;
-						}
-						if (!actionChoice) {
-							return;
-						}
-
-						let unionLines = [];
-						selected.forEach(item => {
-							const targetNode = sections.find(s => s.namespace === item.label);
-							if (targetNode) {
-								unionLines.push(...targetNode.contentLines.map(l => l.raw));
-							}
-						});
-
-						const finalLines = chooseMode === "unique" ? Array.from(new Set(unionLines)) : unionLines;
-
-						if (actionChoice.value === "copy") {
-							await vscode.env.clipboard.writeText(finalLines.join('\n'));
-							vscode.window.showInformationMessage(`HELL: Saved union composition [${finalLines.length} lines] to clipboard cache!`);
-						} else {
-							const insertPos = new vscode.Position(editor.selection.active.line + 1, 0);
-							await editor.edit(editBuilder => editBuilder.insert(insertPos, finalLines.join('\n') + '\n'));
-							handleFollowFocusRouting(editor, insertPos.line, selected[0]?.label);
-						}
-					};
-					await runStep2();
-				};
-				await runStepModeChoice();
+				await runStep2();
 			});
 			quickPick.show();
 		};
+
+		const runStep2 = async () => {
+			stack.push(runStep2);
+			const modeChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+				{ label: "Unique elements", value: "unique", description: "Keep only unique lines across the chosen sections" },
+				{ label: "Keep duplicates", value: "all", description: "Keep all lines, including duplicate entries" }
+			]), { placeHolder: "UNION: Select elements uniqueness filter" });
+
+			if (stack.handleBackSelection(modeChoice)) {
+				return;
+			}
+			if (!modeChoice) {
+				return;
+			}
+			uniqueMode = modeChoice.value;
+			await runStep3();
+		};
+
+		const runStep3 = async () => {
+			stack.push(runStep3);
+			const sortChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+				{ label: "Keep original order", value: "original", description: "Maintain existing document line sequence" },
+				{ label: "Sort alphabetically (A-Z)", value: "alpha", description: "Sort final results in alphabetical order" }
+			]), { placeHolder: "UNION: Select sort ordering layout" });
+
+			if (stack.handleBackSelection(sortChoice)) {
+				return;
+			}
+			if (!sortChoice) {
+				return;
+			}
+			sortOrder = sortChoice.value;
+			await runStep4();
+		};
+
+		const runStep4 = async () => {
+			stack.push(runStep4);
+			const actionChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+				{ label: "📋 Copy Union Set Array", value: "copy" },
+				{ label: "💉 Inject Union Elements Below Cursor", value: "inject" }
+			]), { placeHolder: "UNION: Choose final execution method for union layout arrays" });
+
+			if (stack.handleBackSelection(actionChoice)) {
+				return;
+			}
+			if (!actionChoice) {
+				return;
+			}
+
+			// Perform union compilation
+			let unionLines = [];
+			selectedSections.forEach(item => {
+				const targetNode = sections.find(s => s.namespace === item.label);
+				if (targetNode) {
+					unionLines.push(...targetNode.contentLines.map(l => l.raw));
+				}
+			});
+
+			if (uniqueMode === "unique") {
+				const seen = new Set();
+				unionLines = unionLines.filter(line => {
+					const cl = tokenizeLine(line);
+					if (seen.has(cl)) return false;
+					seen.add(cl);
+					return true;
+				});
+			}
+
+			if (sortOrder === "alpha") {
+				unionLines.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
+			}
+
+			if (actionChoice.value === "copy") {
+				await vscode.env.clipboard.writeText(unionLines.join('\n'));
+				vscode.window.showInformationMessage(`HELL: Saved union composition [${unionLines.length} lines] to clipboard cache!`);
+			} else {
+				const insertPos = new vscode.Position(editor.selection.active.line + 1, 0);
+				await editor.edit(editBuilder => editBuilder.insert(insertPos, unionLines.join('\n') + '\n'));
+				handleFollowFocusRouting(editor, insertPos.line, selectedSections[0]?.label);
+			}
+		};
+
 		await runStep1();
 	});
 
@@ -2011,6 +2645,9 @@ function registerInteractivePipelines(context) {
 	let directivesUniqueCmd = vscode.commands.registerCommand('hell.directives.uniqueSections', () => executeAddDirectiveCommand('UNIQUE'));
 	let directivesSortCmd = vscode.commands.registerCommand('hell.directives.sortSections', () => executeAddDirectiveCommand('ALPHA'));
 	let itemYankCmd = vscode.commands.registerCommand('hell.item.yank', executeItemYankCommand);
+	let formatAddCmd = vscode.commands.registerCommand('hell.format.add', executeFormatAddCommand);
+	let formatRemoveCmd = vscode.commands.registerCommand('hell.format.remove', executeFormatRemoveCommand);
+	let sectionsSortChildItemsCmd = vscode.commands.registerCommand('hell.sections.sortChildItems', executeSectionsSortChildItemsCommand);
 
 	context.subscriptions.push(
 		unionCmd,
@@ -2021,7 +2658,10 @@ function registerInteractivePipelines(context) {
 		sectionsUniqueCmd,
 		directivesUniqueCmd,
 		directivesSortCmd,
-		itemYankCmd
+		itemYankCmd,
+		formatAddCmd,
+		formatRemoveCmd,
+		sectionsSortChildItemsCmd
 	);
 }
 

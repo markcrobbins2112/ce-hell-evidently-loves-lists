@@ -18,7 +18,7 @@ AI maintains a commit message here which is cleared when the user indicates they
  -->
 ## Commit Message
 ```text
-feat(agents): add workspace safety rule to review AGENTS.md and CODE.md before any task execution
+feat(format): implement formatting directives, new section sort/unique commands, yank/intersection multi-step picker enhancements, and AITASKS checklist updates
 ```
 
 <!--
@@ -36,6 +36,52 @@ log entries template
 ### 🔸 Affected Files
 - `{relative path}`
  -->
+---
+## [2026-06-02T18:50:00Z]
+
+### 🎯 Primary Goals & Requirements
+- Implement full formatting validation directives (`FORMAT`, `FORMATQ`, `FORMATC`) and corresponding diagnostic display highlighting formatting mismatches.
+- Add and register formatting commands (`hell.format.add`, `hell.format.remove`, and `hell.sections.sortChildItems`).
+- Document completed tasks in `/AITASKS.md` with strict standard-compliant `[x]` markings.
+- Keep the operational developer log in `/AILOG.md` perfectly updated and synchronized.
+
+---
+### 🛠️ Completed Changes in this Session
+- **Formatting Directives & Diagnostic Painting**:
+	- Integrated section-local HTML comment parsing inside `evaluateDocumentIntegrity` and `getSectionRuleTypes` to detect `<!-- UNIQUE -->`, `<!-- ALPHA -->`, `<!-- FORMAT -->`, `<!-- FORMATQ -->`, and `<!-- FORMATC -->`.
+	- Added custom layout evaluation loops which perform syntax analysis for formatting restrictions and paint informative gutter indicators such as `❗FORMAT: expected {type}`.
+- **New Formatting & Sort Commands Registered**:
+	- Implemented `executeFormatAddCommand` to easily stamp user-selected formatting styles with hierarchical combinators onto target headings.
+	- Implemented `executeFormatRemoveCommand` to display interactive quick-pick removal selections of existing document-level layout overrides.
+	- Implemented `executeSectionsSortChildItemsCommand` to sort section child lists alphabetically.
+- **Synchronized Primary Project Registers**:
+	- Checked off completed tasks in `/AITASKS.md` (marking Yank, Intersect, Format, Unique, and Sorting items as complete/functioning).
+	- Appended a comprehensive session summary log inside `/AILOG.md` detailing the entire multi-step scope.
+
+### 🔸 Affected Files
+- `/extension.js`
+- `/AITASKS.md`
+- `/AILOG.md`
+
+---
+## [2026-06-02T17:26:00Z]
+
+### 🎯 Primary Goals & Requirements
+- Implement safety filters on VS Code `editBuilder.replace` calls to ensure we never redundant-replace matching text ("do not replace X with X").
+- Align checkbox states in `/AITASKS.md` to conform to `CODE.md` constraints using lowercase `[x]` markers.
+
+---
+### 🛠️ Completed Changes in this Session
+- **Redundant Edits Optimization Guards**:
+	- Implemented strict content comparison filters inside `executeSectionSortCommand`, `writeSectionContent`, and `executeSectionsSortCommand` to block replacement edits if the existing text at range matches the replacement text verbatim.
+- **Enforced Checklist Lowercase formatting**:
+	- Replaced all checklist tick marks in `AITASKS.md` targeting completed tasks with standard `[x]` lowercase formats to strictly comply with the rule of "never use an [X] always use lowercase [x] when completing a task".
+
+### 🔸 Affected Files
+- `/extension.js`
+- `/AITASKS.md`
+- `/AILOG.md`
+
 ---
 ## [2026-06-02T11:17:00Z]
 

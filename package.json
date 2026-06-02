@@ -78,7 +78,10 @@
 		"onCommand:hell.item.move.merge",
 		"onCommand:hell.directives.insert",
 		"onCommand:hell.directives.wrap",
-		"onCommand:hell.markers.refresh"
+		"onCommand:hell.markers.refresh",
+		"onCommand:hell.format.remove",
+		"onCommand:hell.format.add",
+		"onCommand:hell.sections.sortChildItems"
 	],
 	"contributes": {
 		"languages": [
@@ -93,17 +96,17 @@
 		"commands": [
 			{
 				"command": "hell.directives.insertExample",
-				"title": "Insert Example Directives Template Block",
+				"title": "Directives: Insert Example Block _dixb",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.export.execute",
-				"title": "Execute Named Export Directive",
+				"title": "Exports: Execute an Export _eee",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.sort",
-				"title": "Sort Section Content (Ignore Bullets/Checkboxes)",
+				"title": "Section: Sort Current _ssc",
 				"category": "👹HELL"
 			},
 			{
@@ -118,7 +121,7 @@
 			},
 			{
 				"command": "hell.sections.unique",
-				"title": "Sections: Unique Sections _sus",
+				"title": "Sections: Unique Children _suc",
 				"category": "👹HELL"
 			},
 			{
@@ -148,147 +151,162 @@
 			},
 			{
 				"command": "hell.section.union",
-				"title": "Compute Global Union Set... (Interactive Picker Options)",
+				"title": "Sections: Create Item Union _sciu",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.copy",
-				"title": "Copy Section(s)... (Interactive Options)",
+				"title": "Sections: Copy Section Items _scsi",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.inject",
-				"title": "Inject Section(s)... (Interactive Options)",
+				"title": "Sections: Inject Section Items _sisi",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.import",
-				"title": "Import Data Array to Section...",
+				"title": "Section: Import Section Data _sisd",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.export",
-				"title": "Export Section Data Array to File...",
+				"title": "Section: Export Section Data _sesd",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.append",
-				"title": "Append Active Item to Section",
+				"title": "Items: Append Items to Section _iais",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.prepend",
-				"title": "Prepend Active Item to Section",
+				"title": "Items: Prepend Items to Section _ipis",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.merge",
-				"title": "Merge Active Item into Section (No Dupes)",
+				"title": "Items: Merge Item into Section _imis",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.prev",
-				"title": "Copy/Move Item to Previous Section",
+				"title": "Items: Move Items to Previous Section _imps",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.next",
-				"title": "Copy/Move Item to Next Section",
+				"title": "Items: Move Items to Next Section _imns",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.parent",
-				"title": "Copy/Move Item to Parent Section",
+				"title": "Items: Move Items to Parent Section _impas",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.child",
-				"title": "Copy/Move Item to Child Section",
+				"title": "Items: Move Items to Child Section _imcs",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.sibling",
-				"title": "Copy/Move Item to Sibling Section",
+				"title": "Items: Move Items to Sibling Section _imss",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy",
-				"title": "Copy Active Item(s) to Section...",
+				"title": "Items: Copy Items to Section _ics",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move",
-				"title": "Move Active Item(s) to Section...",
+				"title": "Items: Move Items to Section _imis",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.prev",
-				"title": "Copy Active Item(s) to Previous Section",
+				"title": "Items: Copy Items to Previous Section _icps",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.next",
-				"title": "Copy Active Item(s) to Next Section",
+				"title": "Items: Copy Items to Next Section _icns",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.parent",
-				"title": "Copy Active Item(s) to Parent Section",
+				"title": "Items: Copy Items to Parent Section _icpas",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.child",
-				"title": "Copy Active Item(s) to Child Section",
+				"title": "Items: Copy Items to Child Section _iccs",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.sibling",
-				"title": "Copy Active Item(s) to Sibling Section",
+				"title": "Items: Copy Items to Sibling Section _icss",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.prepend",
-				"title": "Copy Active Item(s) to Section (Prepend Mode)",
+				"title": "Items: Copy and Prepend Items to Section _icprs",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.append",
-				"title": "Copy Active Item(s) to Section (Append Mode)",
+				"title": "Items: Copy and Append Items to Section _icas",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy.merge",
-				"title": "Copy Active Item(s) to Section (Merge Mode)",
+				"title": "Items: Copy and Merge Items to Section _icms",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.prepend",
-				"title": "Move Active Item(s) to Section (Prepend Mode)",
+				"title": "Items: Move and Prepend Items to Section _imps",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.append",
-				"title": "Move Active Item(s) to Section (Append Mode)",
+				"title": "Items: Move and Append Items to Section _imas",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.merge",
-				"title": "Move Active Item(s) to Section (Merge Mode)",
+				"title": "Items: Move and Merge Items to Section _imms",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.directives.insert",
-				"title": "Insert Empty Directives Block",
+				"title": "Directives: Insert Empty Block _dieb",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.directives.wrap",
-				"title": "Wrap Selection in Directives Block",
+				"title": "Directives: Wrap Selection _dws",
 				"category": "👹HELL"
 			},
 			{
 				"command": "hell.markers.refresh",
-				"title": "Re-evaluate Section Integrity Indicators (Lint Markers)",
+				"title": "Markers: Refresh _mr",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.format.remove",
+				"title": "Format: Remove _fr",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.format.add",
+				"title": "Format: Add _fa",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.sections.sortChildItems",
+				"title": "Sections: Sort Child Items _ssci",
 				"category": "👹HELL"
 			}
 		],
@@ -452,6 +470,18 @@
 				},
 				{
 					"command": "hell.markers.refresh",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.format.remove",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.format.add",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.sections.sortChildItems",
 					"when": "editorLangId == markdown"
 				}
 			]

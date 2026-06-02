@@ -20,6 +20,7 @@
 
 - [ ] FAIL: I have the following and I do not see a ::before or ::after on duplicate "data",
 	- [ ] see extension-with-befores.ts for example of working before/after
+	- [ ] I did something that made a certain section persist a state of it being sensative to duplicates, whatever that state mechanism is, clear it and remove its functionality
 
 ```markdown
 <!-- HELL:DIRECTIVES
@@ -31,7 +32,17 @@
 - "data",
 - "datab",
 ```
-### Format Directive
+### Before and After
+- Every line in the document should have a blank :before so as to even out the lines
+- Otherise the blank is removed it line hase one or more before icons
+- icons for directive violations
+	- ALPHA = 🔹
+	- SORT = 🔸
+- [ ] FAIL: if more than one before is present, all befores should be used
+- [ ] NEW: ALPHA
+	- [ ] FAIL: alpha before icon needs to be applied to the item as well as the heading with the count
+- [ ] NEW: UNIQUE
+	- [ ] FAIL: unique violations need to go on the section heading like ALPHA
 #### Data Format
 - a line can look like
 	- {optional tabs or spaces}{optional - for bullet}{optional checkbox}{optional checkbox tag}{data container}{optional user text}{optional //{more user text}}
@@ -52,8 +63,9 @@
 - Items being sorted use the actual data no matter its format
 - Items with bad format should be indicated by before
 - commands to deal with format
-	- [ ] NEW: format: remove
-		- multi picker (show each that is present)
+	- [ ] FAIL: remove
+		- [ ] FAIL: this is not dependent on directives, it operates on the current lines, removing substrings
+		- [ ] FAIL: multi picker (show each that is present)
 			- remove indent
 			- remove bullet
 			- remove text before data
@@ -61,15 +73,17 @@
 			- remove meta text after text after data
 			- remove data quotes
 			- remove data comma
-	- [ ] NEW: add
+	- [ ] FAIL: add
+		- [ ] FAIL: this is not dependent on directives, it operates on the current lines, adding substrings
 		- multi picker (show each that is not present)
 			- add indent
 			- add bullet
 			- add data quotes
 			- add data comma
 
-### Prepare for Command Renames
+### Command Reference
 - [ ] NEW: Commands and their new titles
+	- [ ] NEW: AI Maintain this, push changes from here
 	- `hell.markers.refresh` Markers: Refresh _mr
 	- `hell.directives.insert` Directives: Insert Empty Block _dieb
 	- `hell.directives.insertExample` Directives: Insert Example Block _dixb
@@ -102,36 +116,61 @@
 	- `hell.item.copy.parent` Items: Copy Items to Parent Section _icpas
 	- `hell.item.copy.child` Items: Copy Items to Child Section _iccs
 	- `hell.item.copy.sibling` Items: Copy Items to Sibling Section _icss
+	- `hell.item.copy.prepend` Items: Copy and Prepend Items to Section _icprs
+	- `hell.item.copy.append` Items: Copy and Append Items to Section _icas
+	- `hell.item.copy.merge` Items: Copy and Merge Items to Section _icms
+	- `hell.item.move.prepend` Items: Move and Prepend Items to Section _imps
+	- `hell.item.move.append` Items: Move and Append Items to Section _imas
+	- `hell.item.move.merge` Items: Move and Merge Items to Section _imms
 
 ### New Commands
 - [ ] FAIL: Yank
-	- [ ]  Nothing happens
-	- [ ] NEW: cut items and put them in current section
-	- [ ] NEW: picker: from sections
-	- [ ] NEW: with each section: picker: child depth|items
-	- [ ] NEW: picker: flatten
-	- [ ] NEW: picker: sort
-	- [ ] NEW: picker: unique
-	- [ ] NEW: picker: inject or copy
-	- [ ] NEW: if inject: picker: prepend append merge
+	- [ ] FAIL: Nothing happens
+	- [ ] FAIL: cut items and put them in current section
+	- [ ] FAIL: picker: from sections
+	- [ ] FAIL: with each section: picker: child depth|items
+	- [ ] FAIL: picker: flatten
+	- [ ] FAIL: picker: sort
+	- [ ] FAIL: picker: unique
+	- [ ] FAIL: picker: inject or copy
+	- [ ] FAIL: if inject: picker: prepend append merge
 - use new naming style
 - [ ] FAIL: Section Intersect
-	- [ ] has no results
-	- works like union but does intersection
+	- [X] has no results
+	- [ ] FAIL: works like union but does intersection
+		- [ ] FAIL: is doing a union should do an intersection
+			- intersection is only items existing in all sources
 - [ ] FAIL: Item Remove from Sections
-	- [ ] not found
-- [ ] NEW: Item Inject to Sections
-	- [ ] NEW: first picker should be choice between current items or new item
+	- [ ] FAIL: does nothing
+		- [ ] offers multi-picker of all sections
+			- then for each section selected
+				- offer a depth picker
+			- then multi-picker of all chosen items
+			- then remove those items
+			- this is exactly what Yank does except Yank offers another picker to copy or inject
+- [ ] FAIL: Item Inject to Sections
+	- [X] first picker should be choice between current items or new item
+	- [ ] FAIL: when this executes it does damage to lines beginning with html comment first part
+	- [ ] FAIL: general fail to operate
 - [ ] FAIL: Sections Sort Child Sections
-	- [ ] FAIL: picker does not bring up list of every section with children
-- [ ] NEW: Sections Sort Child Items
+	- [ ] FAIL: picker should be mult-pick of sections with child sections
+	- [ ] FAIL: child sections should be sorted
+	- [X] picker does not bring up list of every section with children
+- [ ] FAIL: Sections Sort Child Items
+	- [ ] FAIL: picker should be mult-pick of sections with child items
+	- [X] child items of selected sections should be sorted
 - [ ] NEW: Sections Unique
-	- [ ] NEW: Rename Sections Unique children
+	- [ ] NEW: picker should be a multi-pick of sections
+	- [ ] NEW: sections items should be made unique
 - [ ] NEW: Directives Unique Sections
-	- [ ] I ren this and the dupe indicators started working, now need that undone if it is permanent. this function is meant to inject a html comment directive
-	- write/reuse directive as first item in section
-- [x] NEW: Directives Sort Sections
-	- write/reuse directive as first item in section
+	- [ ] NEW: directives like this should work
+		- '<!-- ALPHA UNIQUE -->'
+	- [X] OK: I ran this and the dupe indicators started working, now need that undone if it is permanent. this function is meant to inject a html comment directive
+	- [X] write/reuse directive as first item in section
+- [ ] Directives Sort Sections
+	- [X] write/reuse directive as first item in section
+	- [ ] NEW: directives like this should work
+		- '<!-- ALPHA UNIQUE -->'
 
 - [X] insert directives
 	- below current line

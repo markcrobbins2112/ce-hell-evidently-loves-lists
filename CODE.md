@@ -25,9 +25,11 @@
 - If the user says 'do tasks', always state what you are going to do and then wait for the user's adjustments and approval before proceeding
 - AILOG: The top of AILOG.md should always feature a "Commit Message" section maintained by the AI, which must be cleared whenever the user says they have committed or appended the changes
 - Bullets and everything indented, use tabs
+- Trim trailing spaces and tabs
 
 ### Javascript, Typescript Coding Style
 - **Indentation**: Use tabs for indentation.
+- Trim trailing spaces and tabs
 - **Braces**: Always use braces for control structures (if, for, while, etc.).
 
 #### Typescript Code Style
