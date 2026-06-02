@@ -245,16 +245,16 @@ function evaluateDocumentIntegrity() {
 		if (dir.kind !== 'marker') return;
 
 		// Parse format rules like: 🔸 UNIQUE Section::Name >>
-		const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)(>>|>1>|>2>|>-2>|>!-2>)?$/);
+		const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
 
 		// Secondary regex fallback for multi-section cross relation checking (IN, NOT, USE)
-		const crossMatch = dir.raw.match(/^🔸\s*(IN|NOT|USE)\s+([^>]+?)\s*>\s*([^>]+?)(>>|>1>|>2>|>-2>|>!-2>)?$/);
+		const crossMatch = dir.raw.match(/^🔸\s*(IN|NOT|USE)\s+([^>]+?)\s*>\s*([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
 
 		if (crossMatch) {
 			const relationType = crossMatch[1];
 			const srcPattern = crossMatch[2].trim();
 			const destPattern = crossMatch[3].trim();
-			const combinator = crossMatch[4] || '>>';
+			const combinator = crossMatch[4] ? crossMatch[4].trim() : '>>';
 
 			const srcSections = sections.filter(s => matchNamespacePattern(srcPattern, s.namespace));
 			const destSections = sections.filter(s => matchNamespacePattern(destPattern, s.namespace));
@@ -295,7 +295,7 @@ function evaluateDocumentIntegrity() {
 		if (!tokenMatch) return;
 		const ruleType = tokenMatch[1];
 		const pathPattern = tokenMatch[2].trim();
-		const combinator = tokenMatch[3] || '>>';
+		const combinator = tokenMatch[3] ? tokenMatch[3].trim() : '>>';
 
 		const matchedSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
 
@@ -443,7 +443,20 @@ function initializeAutoSyncWatchers(context) {
 						else endLine = document.lineCount;
 
 						const eraseRange = new vscode.Range(startLine, 0, endLine, 0);
-						const injectText = incomingLines.map(l => `- ${l}`).join('\n') + '\n';
+						let injectText = incomingLines.map(l => {
+							let clean = l;
+							const leadSpaces = clean.match(/^( +)/);
+							if (leadSpaces) {
+								const spaceCount = leadSpaces[1].length;
+								const tabCount = Math.max(1, Math.floor(spaceCount / 2));
+								clean = '\t'.repeat(tabCount) + clean.slice(spaceCount);
+							}
+							return clean.trim().startsWith('-') || clean.trim().startsWith('*') || clean.trim().startsWith('+') || clean.trim().startsWith('\t') ? clean : `- ${clean}`;
+						}).join('\n') + '\n';
+
+						if (startLine >= document.lineCount) {
+							injectText = '\n' + injectText;
+						}
 						editBuilder.replace(eraseRange, injectText);
 					});
 
@@ -546,7 +559,7 @@ function getSectionRuleTypes(sec, sections, document) {
 		const ruleType = tokenMatch[1];
 		const pathPattern = tokenMatch[2].trim();
 		const combinator = tokenMatch[3] || '>>';
-
+		
 		const matchedSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
 		matchedSections.forEach(matchedSec => {
 			let targetNodes = [];
@@ -561,7 +574,7 @@ function getSectionRuleTypes(sec, sections, document) {
 			} else if (combinator === '>!-2>') {
 				targetNodes = sections.filter(s => s.namespace.startsWith(matchedSec.namespace + '::') && s.namespace !== matchedSec.namespace && s.level > matchedSec.level + 1);
 			}
-
+			
 			if (targetNodes.some(s => s.namespace === sec.namespace)) {
 				ruleTypes.add(ruleType);
 			}
@@ -575,18 +588,32 @@ async function writeSectionContent(editor, sec, sections, newLines) {
 	const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
 	const startLine = sec.lineIndex + 1;
 	const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
-
+	
 	const range = new vscode.Range(new vscode.Position(startLine, 0), new vscode.Position(endLine, 0));
+	
+	let textToInsert = newLines.map(l => {
+		let clean = l;
+		const leadSpaces = clean.match(/^( +)/);
+		if (leadSpaces) {
+			const spaceCount = leadSpaces[1].length;
+			const tabCount = Math.max(1, Math.floor(spaceCount / 2));
+			clean = '\t'.repeat(tabCount) + clean.slice(spaceCount);
+		}
+		return clean.trim().startsWith('-') || clean.trim().startsWith('*') || clean.trim().startsWith('+') || clean.trim().startsWith('\t') ? clean : `- ${clean}`;
+	}).join('\n');
 
-	let textToInsert = newLines.map(l => l.trim().startsWith('-') || l.trim().startsWith('*') || l.trim().startsWith('+') || l.trim().startsWith('\t') || l.trim().startsWith(' ') ? l : `- ${l}`).join('\n');
 	if (textToInsert && !textToInsert.endsWith('\n')) {
 		textToInsert += '\n';
 	}
-
+	
+	if (startLine >= document.lineCount) {
+		textToInsert = '\n' + textToInsert;
+	}
+	
 	await editor.edit(editBuilder => {
 		editBuilder.replace(range, textToInsert);
 	});
-
+	
 	evaluateDocumentIntegrity();
 }
 
@@ -615,7 +642,7 @@ function getActiveSectionForCursor(editor, sections) {
 async function relocateItem(editor, items, targetSec, actionType = null, forcedMode = null) {
 	const document = editor.document;
 	const sections = parseDocumentSections(document);
-
+	
 	let selectedAction = actionType;
 	if (!selectedAction) {
 		const choice = await vscode.window.showQuickPick([
@@ -625,7 +652,7 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 		if (!choice) return;
 		selectedAction = choice.value;
 	}
-
+	
 	const rules = getSectionRuleTypes(targetSec, sections, document);
 	let insertMode = forcedMode || "append";
 	if (rules.has("UNIQUE") || rules.has("ALPHA")) {
@@ -639,14 +666,14 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 		if (!modeChoice) return;
 		insertMode = modeChoice.value;
 	}
-
+	
 	const originalLines = targetSec.contentLines.map(l => l.raw);
 	let resultLines = [...originalLines];
-
+	
 	for (const item of items) {
 		const rawText = item.text;
 		const cleanVal = tokenizeLine(rawText);
-
+		
 		if (insertMode === "merge" || rules.has("UNIQUE") || rules.has("ALPHA")) {
 			const exists = resultLines.some(l => tokenizeLine(l) === cleanVal);
 			if (!exists) {
@@ -658,13 +685,13 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 			resultLines.push(rawText);
 		}
 	}
-
+	
 	if (rules.has("ALPHA")) {
 		resultLines.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
 	}
-
+	
 	await writeSectionContent(editor, targetSec, sections, resultLines);
-
+	
 	if (selectedAction === "move") {
 		const sortedItemsToDelete = [...items].sort((a, b) => b.lineIndex - a.lineIndex);
 		await editor.edit(editBuilder => {
@@ -674,39 +701,39 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 			}
 		});
 	}
-
+	
 	const freshSections = parseDocumentSections(document);
 	const freshTargetSec = freshSections.find(s => s.namespace === targetSec.namespace);
 	if (freshTargetSec) {
 		handleFollowFocusRouting(editor, freshTargetSec.lineIndex + 1, freshTargetSec.namespace);
 	}
-
+	
 	vscode.window.showInformationMessage(`Successfully executed ${selectedAction} to '${targetSec.title}' using ${insertMode} mode!`);
 }
 
-async function dispatchMoveItemDirection(direction) {
+async function dispatchMoveItemDirection(direction, forcedAction = null) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) return;
-
+	
 	const document = editor.document;
 	const sections = parseDocumentSections(document);
 	if (sections.length === 0) return;
-
+	
 	const currentSec = getActiveSectionForCursor(editor, sections);
 	if (!currentSec) {
 		vscode.window.showWarningMessage("HELL: No parent heading section containing current cursor.");
 		return;
 	}
-
+	
 	const items = getActiveItems(editor);
 	if (items.length === 0) {
 		vscode.window.showWarningMessage("HELL: No valid list items found under selection.");
 		return;
 	}
-
+	
 	let targetSec = null;
 	const currentIndex = sections.findIndex(s => s.namespace === currentSec.namespace);
-
+	
 	if (direction === 'prev') {
 		if (currentIndex <= 0) {
 			vscode.window.showWarningMessage("HELL: No previous section found.");
@@ -737,18 +764,18 @@ async function dispatchMoveItemDirection(direction) {
 				placeHolder: "e.g. Sub Tasks"
 			});
 			if (!newHeaderName) return;
-
+			
 			const newSectionLevel = currentSec.level + 1;
 			const headingText = "\n" + "#".repeat(newSectionLevel) + " " + newHeaderName.trim();
-
+			
 			const nextSec = sections.find(s => s.lineIndex > currentSec.lineIndex);
 			const insertLine = nextSec ? nextSec.lineIndex : document.lineCount;
 			const insertPos = new vscode.Position(insertLine, 0);
-
+			
 			await editor.edit(editBuilder => {
 				editBuilder.insert(insertPos, headingText + "\n\n");
 			});
-
+			
 			const freshSecs = parseDocumentSections(document);
 			const newNamespace = `${currentSec.namespace}::${newHeaderName.trim()}`;
 			targetSec = freshSecs.find(s => s.namespace === newNamespace);
@@ -779,26 +806,26 @@ async function dispatchMoveItemDirection(direction) {
 			targetSec = choice.section;
 		}
 	}
-
+	
 	if (targetSec) {
-		await relocateItem(editor, items, targetSec);
+		await relocateItem(editor, items, targetSec, forcedAction);
 	}
 }
 
 async function executeItemPrimitiveCommand(mode) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) return;
-
+	
 	const document = editor.document;
 	const sections = parseDocumentSections(document);
 	if (sections.length === 0) return;
-
+	
 	const items = getActiveItems(editor);
 	if (items.length === 0) {
 		vscode.window.showWarningMessage("HELL: No valid list items selected.");
 		return;
 	}
-
+	
 	const targets = sections.map(s => ({
 		label: s.namespace,
 		section: s
@@ -807,24 +834,24 @@ async function executeItemPrimitiveCommand(mode) {
 		placeHolder: `Select target section to ${mode} item(s) into`
 	});
 	if (!targetChoice) return;
-
+	
 	await relocateItem(editor, items, targetChoice.section, null, mode);
 }
 
 async function executeGeneralItemCopyCommand() {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) return;
-
+	
 	const document = editor.document;
 	const sections = parseDocumentSections(document);
 	if (sections.length === 0) return;
-
+	
 	const items = getActiveItems(editor);
 	if (items.length === 0) {
 		vscode.window.showWarningMessage("HELL: No valid items selected.");
 		return;
 	}
-
+	
 	const targets = sections.map(s => ({
 		label: s.namespace,
 		section: s
@@ -833,24 +860,24 @@ async function executeGeneralItemCopyCommand() {
 		placeHolder: "Select a target section to copy the selection into"
 	});
 	if (!choice) return;
-
+	
 	await relocateItem(editor, items, choice.section, "copy");
 }
 
 async function executeGeneralItemMoveCommand() {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) return;
-
+	
 	const document = editor.document;
 	const sections = parseDocumentSections(document);
 	if (sections.length === 0) return;
-
+	
 	const items = getActiveItems(editor);
 	if (items.length === 0) {
 		vscode.window.showWarningMessage("HELL: No valid items selected.");
 		return;
 	}
-
+	
 	const targets = sections.map(s => ({
 		label: s.namespace,
 		section: s
@@ -859,7 +886,7 @@ async function executeGeneralItemMoveCommand() {
 		placeHolder: "Select a target section to move the selection into"
 	});
 	if (!choice) return;
-
+	
 	await relocateItem(editor, items, choice.section, "move");
 }
 
@@ -895,21 +922,21 @@ async function executePipeline(editor, pipeline, sections) {
 	const document = editor.document;
 	const fileDir = path.dirname(document.uri.fsPath);
 	const targetFilePath = path.resolve(fileDir, pipeline.filePath);
-
+	
 	const targetFolder = path.dirname(targetFilePath);
 	if (!fs.existsSync(targetFolder)) {
 		fs.mkdirSync(targetFolder, { recursive: true });
 	}
-
+	
 	const sec = sections.find(s => matchNamespacePattern(pipeline.sectionPattern, s.namespace));
 	if (!sec) {
 		vscode.window.showWarningMessage(`HELL Pipeline error: Target section '${pipeline.sectionPattern}' not found in document.`);
 		return;
 	}
-
+	
 	const combinator = pipeline.combinator || '>>';
 	const options = pipeline.options || [];
-
+	
 	if (pipeline.operation === 'EXPORT') {
 		const lines = gatherScopedSectionLines(sec, sections, combinator);
 		let textLines = [];
@@ -953,7 +980,7 @@ async function executePipeline(editor, pipeline, sections) {
 		const cleanIncoming = incomingLines.map(tokenizeLine);
 		const existingLines = gatherScopedSectionLines(sec, sections, combinator);
 		let finalLines = existingLines.map(l => l.raw);
-
+		
 		if (options.includes('REPLACE')) {
 			finalLines = incomingLines;
 		} else if (options.includes('ADD')) {
@@ -1059,6 +1086,74 @@ FOLLOW -MOVE
 	vscode.window.showInformationMessage("HELL: Automatically stamped example config block comment under cursor.");
 }
 
+async function executeInsertDirectivesCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	
+	const document = editor.document;
+	const activeLine = editor.selection.active.line;
+	const isLastLine = activeLine === document.lineCount - 1;
+	const lastLineText = document.lineAt(activeLine).text;
+	
+	let insertText = "<!-- HELL:DIRECTIVES\n\n-->\n";
+	let insertPos;
+	
+	if (isLastLine) {
+		insertPos = new vscode.Position(activeLine, lastLineText.length);
+		insertText = "\n" + "<!-- HELL:DIRECTIVES\n\n-->";
+	} else {
+		insertPos = new vscode.Position(activeLine + 1, 0);
+	}
+	
+	await editor.edit(editBuilder => {
+		editBuilder.insert(insertPos, insertText);
+	});
+	
+	const targetLine = activeLine + 2;
+	const newCursorPos = new vscode.Position(targetLine, 0);
+	editor.selection = new vscode.Selection(newCursorPos, newCursorPos);
+}
+
+async function executeWrapDirectivesCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	
+	const selection = editor.selection;
+	const selectedText = editor.document.getText(selection);
+	
+	const wrapTemplate = `<!-- HELL:DIRECTIVES\n${selectedText}\n-->`;
+	
+	await editor.edit(editBuilder => {
+		editBuilder.replace(selection, wrapTemplate);
+	});
+}
+
+async function executeItemPrimitiveActionCommand(action, mode) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+	
+	const items = getActiveItems(editor);
+	if (items.length === 0) {
+		vscode.window.showWarningMessage("HELL: No valid list items selected.");
+		return;
+	}
+	
+	const targets = sections.map(s => ({
+		label: s.namespace,
+		section: s
+	}));
+	const targetChoice = await vscode.window.showQuickPick(targets, {
+		placeHolder: `Select target section to ${action} & ${mode} item(s) into`
+	});
+	if (!targetChoice) return;
+	
+	await relocateItem(editor, items, targetChoice.section, action, mode);
+}
+
 async function configureSectionContentInteractive(editor, sections) {
 	const stack = new PickerStack();
 	return new Promise(async (resolve) => {
@@ -1075,7 +1170,7 @@ async function configureSectionContentInteractive(editor, sections) {
 			if (stack.handleBackSelection(choice)) return;
 			if (!choice) { resolve(null); return; }
 			const selectedSec = choice.section;
-
+			
 			const stepSelectCombinator = async () => {
 				stack.push(stepSelectCombinator);
 				const comChoices = [
@@ -1092,7 +1187,7 @@ async function configureSectionContentInteractive(editor, sections) {
 				if (stack.handleBackSelection(comChoice)) return;
 				if (!comChoice) { resolve(null); return; }
 				const comValue = comChoice.value;
-
+				
 				const stepSelectFormatting = async () => {
 					stack.push(stepSelectFormatting);
 					const formatChoices = [
@@ -1105,13 +1200,13 @@ async function configureSectionContentInteractive(editor, sections) {
 					if (stack.handleBackSelection(formatChoice)) return;
 					if (!formatChoice) { resolve(null); return; }
 					const formatValue = formatChoice.value;
-
+					
 					const stepSelectModifiers = async () => {
 						stack.push(stepSelectModifiers);
 						const modifierPick = vscode.window.createQuickPick();
 						modifierPick.title = "Select manipulation modifiers";
 						modifierPick.canSelectMany = true;
-
+						
 						const modItems = [
 							{ label: "Alphabetical Sort", value: "sort" },
 							{ label: "Unique items only", value: "unique" }
@@ -1120,7 +1215,7 @@ async function configureSectionContentInteractive(editor, sections) {
 						modifierPick.onDidAccept(async () => {
 							const selectedMods = modifierPick.selectedItems.map(si => si.value);
 							modifierPick.dispose();
-
+							
 							let resultLines = [];
 							if (comValue === "self") {
 								resultLines = selectedSec.contentLines;
@@ -1139,7 +1234,7 @@ async function configureSectionContentInteractive(editor, sections) {
 								}
 								targetNodes.forEach(node => resultLines.push(...node.contentLines));
 							}
-
+							
 							let outputStrings = resultLines.map(l => formatValue === "clean" ? l.clean : l.raw);
 							if (selectedMods.includes("unique")) {
 								outputStrings = Array.from(new Set(outputStrings));
@@ -1380,11 +1475,27 @@ module.exports = {
 		let prependCmd = vscode.commands.registerCommand('hell.item.prepend', () => executeItemPrimitiveCommand('prepend'));
 		let mergeCmd = vscode.commands.registerCommand('hell.item.merge', () => executeItemPrimitiveCommand('merge'));
 
-		let movePrevCmd = vscode.commands.registerCommand('hell.item.move.prev', () => dispatchMoveItemDirection('prev'));
-		let moveNextCmd = vscode.commands.registerCommand('hell.item.move.next', () => dispatchMoveItemDirection('next'));
-		let moveParentCmd = vscode.commands.registerCommand('hell.item.move.parent', () => dispatchMoveItemDirection('parent'));
-		let moveChildCmd = vscode.commands.registerCommand('hell.item.move.child', () => dispatchMoveItemDirection('child'));
-		let moveSiblingCmd = vscode.commands.registerCommand('hell.item.move.sibling', () => dispatchMoveItemDirection('sibling'));
+		let movePrevCmd = vscode.commands.registerCommand('hell.item.move.prev', () => dispatchMoveItemDirection('prev', 'move'));
+		let moveNextCmd = vscode.commands.registerCommand('hell.item.move.next', () => dispatchMoveItemDirection('next', 'move'));
+		let moveParentCmd = vscode.commands.registerCommand('hell.item.move.parent', () => dispatchMoveItemDirection('parent', 'move'));
+		let moveChildCmd = vscode.commands.registerCommand('hell.item.move.child', () => dispatchMoveItemDirection('child', 'move'));
+		let moveSiblingCmd = vscode.commands.registerCommand('hell.item.move.sibling', () => dispatchMoveItemDirection('sibling', 'move'));
+
+		let copyPrevCmd = vscode.commands.registerCommand('hell.item.copy.prev', () => dispatchMoveItemDirection('prev', 'copy'));
+		let copyNextCmd = vscode.commands.registerCommand('hell.item.copy.next', () => dispatchMoveItemDirection('next', 'copy'));
+		let copyParentCmd = vscode.commands.registerCommand('hell.item.copy.parent', () => dispatchMoveItemDirection('parent', 'copy'));
+		let copyChildCmd = vscode.commands.registerCommand('hell.item.copy.child', () => dispatchMoveItemDirection('child', 'copy'));
+		let copySiblingCmd = vscode.commands.registerCommand('hell.item.copy.sibling', () => dispatchMoveItemDirection('sibling', 'copy'));
+
+		let copyPrependCmd = vscode.commands.registerCommand('hell.item.copy.prepend', () => executeItemPrimitiveActionCommand('copy', 'prepend'));
+		let copyAppendCmd = vscode.commands.registerCommand('hell.item.copy.append', () => executeItemPrimitiveActionCommand('copy', 'append'));
+		let copyMergeCmd = vscode.commands.registerCommand('hell.item.copy.merge', () => executeItemPrimitiveActionCommand('copy', 'merge'));
+		let movePrependCmd = vscode.commands.registerCommand('hell.item.move.prepend', () => executeItemPrimitiveActionCommand('move', 'prepend'));
+		let moveAppendCmd = vscode.commands.registerCommand('hell.item.move.append', () => executeItemPrimitiveActionCommand('move', 'append'));
+		let moveMergeCmd = vscode.commands.registerCommand('hell.item.move.merge', () => executeItemPrimitiveActionCommand('move', 'merge'));
+
+		let insertDirectivesCmd = vscode.commands.registerCommand('hell.directives.insert', executeInsertDirectivesCommand);
+		let wrapDirectivesCmd = vscode.commands.registerCommand('hell.directives.wrap', executeWrapDirectivesCommand);
 
 		let generalItemCopyCmd = vscode.commands.registerCommand('hell.item.copy', executeGeneralItemCopyCommand);
 		let generalItemMoveCmd = vscode.commands.registerCommand('hell.item.move', executeGeneralItemMoveCommand);
@@ -1406,6 +1517,19 @@ module.exports = {
 			moveParentCmd,
 			moveChildCmd,
 			moveSiblingCmd,
+			copyPrevCmd,
+			copyNextCmd,
+			copyParentCmd,
+			copyChildCmd,
+			copySiblingCmd,
+			copyPrependCmd,
+			copyAppendCmd,
+			copyMergeCmd,
+			movePrependCmd,
+			moveAppendCmd,
+			moveMergeCmd,
+			insertDirectivesCmd,
+			wrapDirectivesCmd,
 			generalItemCopyCmd,
 			generalItemMoveCmd
 		);

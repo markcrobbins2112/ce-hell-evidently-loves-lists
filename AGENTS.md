@@ -13,6 +13,9 @@
 - ▪️[SPEC.md](SPEC.md)
 - ▪️[TESTING.md](TESTING.md)
 
+## Crucial Agent Workflow Rule
+- **Pre-Task Review**: Before starting any tasks or executing edits, you MUST view and review `AGENTS.md` and `CODE.md` to ensure absolute alignment with all guidelines, formatting specifications, and constraints.
+
 ## Application
 - create a vscode extension called ''
 

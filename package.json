@@ -57,6 +57,19 @@
 		"onCommand:hell.item.move.sibling",
 		"onCommand:hell.item.copy",
 		"onCommand:hell.item.move",
+		"onCommand:hell.item.copy.prev",
+		"onCommand:hell.item.copy.next",
+		"onCommand:hell.item.copy.parent",
+		"onCommand:hell.item.copy.child",
+		"onCommand:hell.item.copy.sibling",
+		"onCommand:hell.item.copy.prepend",
+		"onCommand:hell.item.copy.append",
+		"onCommand:hell.item.copy.merge",
+		"onCommand:hell.item.move.prepend",
+		"onCommand:hell.item.move.append",
+		"onCommand:hell.item.move.merge",
+		"onCommand:hell.directives.insert",
+		"onCommand:hell.directives.wrap",
 		"onCommand:hell.markers.refresh"
 	],
 	"contributes": {
@@ -161,6 +174,71 @@
 				"category": "👹HELL"
 			},
 			{
+				"command": "hell.item.copy.prev",
+				"title": "Copy Active Item(s) to Previous Section",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.next",
+				"title": "Copy Active Item(s) to Next Section",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.parent",
+				"title": "Copy Active Item(s) to Parent Section",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.child",
+				"title": "Copy Active Item(s) to Child Section",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.sibling",
+				"title": "Copy Active Item(s) to Sibling Section",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.prepend",
+				"title": "Copy Active Item(s) to Section (Prepend Mode)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.append",
+				"title": "Copy Active Item(s) to Section (Append Mode)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.copy.merge",
+				"title": "Copy Active Item(s) to Section (Merge Mode)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.move.prepend",
+				"title": "Move Active Item(s) to Section (Prepend Mode)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.move.append",
+				"title": "Move Active Item(s) to Section (Append Mode)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.item.move.merge",
+				"title": "Move Active Item(s) to Section (Merge Mode)",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.directives.insert",
+				"title": "Insert Empty Directives Block",
+				"category": "👹HELL"
+			},
+			{
+				"command": "hell.directives.wrap",
+				"title": "Wrap Selection in Directives Block",
+				"category": "👹HELL"
+			},
+			{
 				"command": "hell.markers.refresh",
 				"title": "Re-evaluate Section Integrity Indicators (Lint Markers)",
 				"category": "👹HELL"
@@ -238,6 +316,58 @@
 				},
 				{
 					"command": "hell.item.move",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.prev",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.next",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.parent",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.child",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.sibling",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.prepend",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.append",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy.merge",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.prepend",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.append",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move.merge",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.directives.insert",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.directives.wrap",
 					"when": "editorLangId == markdown"
 				},
 				{
