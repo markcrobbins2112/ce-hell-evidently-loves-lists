@@ -5,140 +5,242 @@ const crypto = require('crypto');
 
 // --- BIDIRECTIONAL BACK-NAVIGABLE PICKER STACK CONTROLLER ---
 class PickerStack {
-	constructor() {
-		this.stack = [];
-	}
-
-	/**
-	 * Pushes a step generation function to the navigation memory tree stack.
-	 * @param {Function} stepFunction - A parameterless async function that executes a QuickPick step.
-	 */
-	push(stepFunction) {
-		this.stack.push(stepFunction);
-	}
-
-	/**
-	 * Pops the last step off the memory tree stack and re-executes the previous picker layout pane.
-	 */
+	constructor() { this.stack = []; }
+	push(stepFunction) { this.stack.push(stepFunction); }
 	async back() {
 		if (this.stack.length > 1) {
-			this.stack.pop(); // Remove current view state
-			const previousStep = this.stack[this.stack.length - 1];
-			await previousStep();
-		} else {
-			vscode.window.setStatusBarMessage("Already at step 1 root category tier.", 3000);
+			this.stack.pop();
+			await this.stack[this.stack.length - 1]();
 		}
 	}
-
-	/**
-	 * Helper to inject the unified custom back navigation choice button component at index 0.
-	 * @param {Array<Object>} items - Array of traditional QuickPickItem layout structures.
-	 * @returns {Array<Object>} Items appended with the functional Back layout link block.
-	 */
 	injectBackItem(items) {
-		if (this.stack.length > 1) {
-			return [{ label: "↩️ Back", description: "Return to previous configuration step matrix pane" }, ...items];
-		}
-		return items;
+		return this.stack.length > 1 ? [{ label: "↩️ Back", description: "Return to previous configuration pane" }, ...items] : items;
 	}
-
-	/**
-	 * Helper wrapper logic determining if the selection requires a stack backstep trigger routing.
-	 * @param {Object} selection - Chosen item object output from a QuickPick choice execution.
-	 * @returns {boolean} True if the action handled a manual back navigation reroute layout.
-	 */
 	handleBackSelection(selection) {
-		if (selection && selection.label === "↩️ Back") {
-			this.back();
-			return true;
-		}
+		if (selection && selection.label === "↩️ Back") { this.back(); return true; }
 		return false;
 	}
 }
 
-// --- DYNAMIC LOG GENERATOR DATA TEMPLATE ---
-const DIRECTIVES_EXAMPLE_TEMPLATE = `<!-- HELL:SAMPLE DIRECTIVES
-strip out the SAMPLE text string designator token keyword above to make these options operational.
-all active commands, file pipelines and alignment scripts must stay wrapped inside HTML code comments.
-
-// =================================================================================================
-// ⚡ PERMUTATION GROUP 1: FILE PIPELINES (IMPORT, EXPORT, AND AUTO-SYNC SYNC TRACKERS)
-// =================================================================================================
-// 💡 syntax format structure rule:
-// EXPORT {named_config_handle} {filepath_target} {double_colon_section_namespace} {> or >>} {options}
-//
-// 1a. Standard Static Overwrite Export File Routine:
-// Grabs elements sitting under Phase 1, scrubs bullets/checkbox elements, orders alphabetically and rewrites backup.json
-EXPORT standard_backup ./backups/backup.json Phase 1::Active Tasks >> REPLACE SORT STRIP UNIQUE
-
-// 1b. Appending List Export (Using >> operator to preserve target file history data):
-// Appends fresh entries onto a text database, turning off default token stripping via the minus symbol modifier
-EXPORT persistent_log C:/logs/history.txt Phase 1::Archives >1> AMEND -STRIP UNSORTED
-
-// 1c. Real-Time Active File-Watcher Sync Engine (The AUTO Trigger Matrix Guard Grid):
-// Watches data.json and automatically synchronizes updates into your local markdown section.
-// Uses internal memory MD5 hashing and event locks to completely block loops, syntax corruption or system freezes.
+// --- DYNAMIC DATA LOG GENERATOR TEMPLATE ---
+const DIRECTIVES_EXAMPLE_TEMPLATE = `<!-- HELL:DIRECTIVES
+// EXPORT standard_backup ./backups/backup.json Phase 1::Active Tasks >> REPLACE SORT STRIP UNIQUE
 IMPORT AUTO shared_data ./data/shared.json Global Registry::Incoming Items >> ADD SORT UNIQUE
-
-// =================================================================================================
-// ⚡ PERMUTATION GROUP 2: ADVANCED PATH SECTOR NAMESPACES (GLOBS, WILDCARDS, AND REGEX ENGINE RUNTIMES)
-// =================================================================================================
-// 2a. Double-Colon Path Traversal Matcher (Replaces slow presentation hashtags):
-// Targets any subheading named "Bugs" nested strictly beneath a top-tier layout heading named "Phase 1"
 🔸 UNIQUE Phase 1::Bugs
-
-// 2b. Wildcard Matcher Component (*):
-// Matches "Sprint 1::Tasks", "Sprint 2::Tasks", "Sprint ABC::Tasks", etc.
 🔸 ALPHA Sprint *::Tasks
-
-// 2c. Deep Recursive Glob Matcher Compiler (**):
-// Sweeps the entire file layout structural hierarchy from top-to-bottom and applies validation rule to *every* section named "Notes"
-🔸 UNIQUE **::Notes
-
-// 2d. Explicit In-line Regular Expression Router (/(pattern)/):
-// Matches headings titled "Release 1::Logs", "Release 2::Logs", skipping alternate numeric naming tags
-🔸 ALPHA Release /(1|2)/::Logs
-
-// =================================================================================================
-// ⚡ PERMUTATION GROUP 3: MULTI-TIER CHILD COMBINATOR TARGETS (>1>, >2>, >-2>, >!-2>)
-// =================================================================================================
-// 3a. Deep Recursive Descendants Operator (>>):
-// Evaluates the current heading folder scope block alongside *all* nested descendants, children and grandchildren down the tree.
-🔸 UNIQUE Production Container >>
-
-// 3b. Immediate Child Combinator Operator (>1>):
-// Isolates validation checks strictly to the immediate level-1 child headers directly beneath the parent line boundary.
-🔸 UNIQUE Master Index >1>
-
-// 3c. Intermediate Nested Child Combinator Tier (>2>):
-// Scopes processing to immediate level-1 children and their secondary nested level-2 child blocks.
-🔸 ALPHA Master Index >2>
-
-// 3d. Skipped Level Descendant Combinator (>-2>):
-// Bypasses the immediate level-1 children entirely; isolates evaluations strictly down through grandchildren and deeper layers.
-🔸 UNIQUE Master Index >-2>
-
-// 3e. Exclusive Descendant Exclusion Combinator (>!-2>):
-// Explicitly ignores the target parent block AND explicitly ignores immediate level-1 children; scans exclusively from grandchildren down.
-🔸 UNIQUE Master Index >!-2>
-
-// =================================================================================================
-// ⚡ PERMUTATION GROUP 4: SILENT SECTOR MOVE-FOCUS ACCELERATOR INSTRUCTIONS (FOLLOW CORES)
-// =================================================================================================
-// 4a. Global Scope Focus Target Rule:
-// Automatically shifts your text cursor location down to track and follow an element whenever an item is copied or moved.
 FOLLOW COPY MOVE {global}
-
-// 4b. Localized Path Context Overrides:
-// Locks stationary behavior inside specific document layers, while maintaining high-speed tracking elsewhere.
-FOLLOW COPY MOVE Sprint 1::Active Backlog
-FOLLOW -MOVE
 -->`;
 
-// --- GLOBAL VOLATILE ENGINE AUTO-LOCK STORAGE MAP ---
-// Prevents real-time loop feedback conditions during asynchronous cross-file operations
 const activeAutoSyncLocks = new Map();
 const sectionContentHashCache = new Map();
+let hellDecorationType = vscode.window.createTextEditorDecorationType({});
+
+function tokenizeLine(rawText) {
+	let str = rawText.trim();
+	str = str.replace(/^[-*+]\s+/, '');      // Strip bullet points
+	str = str.trim();
+	str = str.replace(/^\[[ xX\-]?\]\s+/, '');      // Strip checkbox brackets
+	str = str.trim();
+	str = str.replace(/^[A-Z_]+:\s+/, '');         // Strip custom keyword prefixes (TAG:)
+	str = str.trim();
+	str = str.replace(/^(["'`])(.*)\1,?$/, '$2');  // Strip wrapping code quotes/commas
+	return str.trim();
+}
+
+function parseDocumentSections(document) {
+	const lines = document.getText().split(/\r?\n/);
+	const sections = [];
+	const activeAncestry = [];
+
+	for (let i = 0; i < lines.length; i++) {
+		const text = lines[i];
+		const headerMatch = text.match(/^(#+)\s+(.*)$/);
+
+		if (headerMatch) {
+			const level = headerMatch[1].length; // FIX: correct level evaluation length from match group
+			const title = headerMatch[2].trim();
+
+			while (activeAncestry.length > 0 && activeAncestry[activeAncestry.length - 1].level >= level) {
+				activeAncestry.pop();
+			}
+
+			const parentPath = activeAncestry.map(a => a.title).join('::');
+			const fullNamespace = parentPath ? `${parentPath}::${title}` : title;
+
+			const sectionNode = {
+				lineIndex: i,
+				level: level,
+				title: title,
+				namespace: fullNamespace,
+				parentNamespace: parentPath || null,
+				contentLines: [],
+				children: []
+			};
+
+			if (activeAncestry.length > 0) activeAncestry[activeAncestry.length - 1].children.push(sectionNode);
+			sections.push(sectionNode);
+			activeAncestry.push(sectionNode);
+		} else if (sections.length > 0 && text.trim() && !text.trim().startsWith('<!--') && !text.trim().startsWith('//') && !text.trim().startsWith('~')) {
+			sections[sections.length - 1].contentLines.push({
+				lineIndex: i,
+				raw: text,
+				clean: tokenizeLine(text)
+			});
+		}
+	}
+	return sections;
+}
+
+module.exports = {};
+// =================================================================================================
+// 🎨 PART 1B: NAMESPACE PATTERN MATCHER & CUMULATIVE DIAGNOSTICS MATRIX
+// =================================================================================================
+
+function matchNamespacePattern(pattern, namespace) {
+	const patternParts = pattern.split('::');
+	const nameParts = namespace.split('::');
+	if (patternParts.includes('**')) {
+		const target = patternParts[patternParts.length - 1];
+		if (target === '**') return true;
+		return nameParts[nameParts.length - 1] === target;
+	}
+	if (patternParts.length !== nameParts.length) return false;
+	for (let i = 0; i < patternParts.length; i++) {
+		const pPart = patternParts[i];
+		const nPart = nameParts[i];
+		if (pPart === '*') continue;
+		if (pPart.startsWith('/') && pPart.endsWith('/')) {
+			try {
+				if (!(new RegExp(pPart.slice(1, -1))).test(nPart)) return false;
+				continue;
+			} catch (e) { return false; }
+		}
+		if (pPart !== nPart) return false;
+	}
+	return true;
+}
+
+function gatherScopedSectionLines(rootSection, allSections, combinator) {
+	let targetNodes = [];
+	if (!combinator || combinator === '>>') {
+		targetNodes = allSections.filter(s => s.namespace === rootSection.namespace || s.namespace.startsWith(rootSection.namespace + '::'));
+	} else if (combinator === '>1>') {
+		targetNodes = allSections.filter(s => s.parentNamespace === rootSection.namespace && s.level === rootSection.level + 1);
+	} else if (combinator === '>2>') {
+		targetNodes = allSections.filter(s => s.namespace.startsWith(rootSection.namespace + '::') && (s.level === rootSection.level + 1 || s.level === rootSection.level + 2));
+	} else if (combinator === '>-2>') {
+		targetNodes = allSections.filter(s => s.namespace.startsWith(rootSection.namespace + '::') && s.level > rootSection.level + 1);
+	} else if (combinator === '>!-2>') {
+		targetNodes = allSections.filter(s => s.namespace.startsWith(rootSection.namespace + '::') && s.namespace !== rootSection.namespace && s.level > rootSection.level + 1);
+	}
+	const compiledLines = [];
+	targetNodes.forEach(node => compiledLines.push(...node.contentLines));
+	return compiledLines;
+}
+
+function harvestActiveDirectives(document) {
+	const text = document.getText();
+	const directiveRegex = /<!--\s*HELL:(?:SAMPLE\s+)?DIRECTIVES([\s\S]*?)-->/g;
+	const directives = [];
+	let match;
+	while ((match = directiveRegex.exec(text)) !== null) {
+		const lines = match[1].split(/\r?\n/);
+		lines.forEach(line => {
+			const cleanLine = line.trim();
+			if (!cleanLine || cleanLine.startsWith('//')) return;
+			if (cleanLine.startsWith('EXPORT') || cleanLine.startsWith('IMPORT')) directives.push({ kind: 'pipeline', raw: cleanLine });
+			else if (cleanLine.startsWith('FOLLOW')) directives.push({ kind: 'follow', raw: cleanLine });
+			else if (cleanLine.startsWith('🔸')) directives.push({ kind: 'marker', raw: cleanLine });
+		});
+	}
+	return directives;
+}
+
+function evaluateDocumentIntegrity() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor || editor.document.languageId !== 'markdown') return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	const directives = harvestActiveDirectives(document);
+	const annotationDictionary = {};
+
+	const registerDiagnostic = (lineIdx, prefix, suffix) => {
+		if (!annotationDictionary[lineIdx]) annotationDictionary[lineIdx] = { prefixes: [], suffixes: [] };
+		if (prefix && !annotationDictionary[lineIdx].prefixes.includes(prefix)) annotationDictionary[lineIdx].prefixes.push(prefix);
+		if (suffix && !annotationDictionary[lineIdx].suffixes.includes(suffix)) annotationDictionary[lineIdx].suffixes.push(suffix);
+	};
+
+	directives.forEach(dir => {
+		if (dir.kind !== 'marker') return;
+		const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)(>>|>1>|>2>|>-2>|>!-2>)?$/);
+		if (!tokenMatch) return;
+
+		const ruleType = tokenMatch[1];
+		const pathPattern = tokenMatch[2].trim();
+		const combinator = tokenMatch[3] || '>>';
+		const matchedSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
+
+		matchedSections.forEach(sec => {
+			const scopedLines = gatherScopedSectionLines(sec, sections, combinator);
+
+			if (ruleType === 'UNIQUE') {
+				const uniqueRegistry = {};
+				scopedLines.forEach(l => {
+					if (!uniqueRegistry[l.clean]) uniqueRegistry[l.clean] = [];
+					uniqueRegistry[l.clean].push(l.lineIndex);
+				});
+				Object.keys(uniqueRegistry).forEach(key => {
+					const occurrences = uniqueRegistry[key];
+					if (occurrences.length > 1) {
+						occurrences.forEach(lineIdx => {
+							const humanLineNumbers = occurrences.map(idx => idx + 1).join(', ');
+							registerDiagnostic(lineIdx, '🔸 ', `❗DUPE: lines: [${humanLineNumbers}]`);
+						});
+					}
+				});
+			}
+
+			if (ruleType === 'ALPHA') {
+				let unsortedCount = 0;
+				for (let i = 0; i < scopedLines.length - 1; i++) {
+					if (scopedLines[i].clean.localeCompare(scopedLines[i + 1].clean) > 0) {
+						unsortedCount++;
+						registerDiagnostic(scopedLines[i + 1].lineIndex, null, '❗ALPHA: item out of order');
+					}
+				}
+				if (unsortedCount > 0) registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
+			}
+		});
+	});
+
+	const nativeDecorationsArray = [];
+	hellDecorationType.dispose();
+
+	Object.keys(annotationDictionary).forEach(lineStr => {
+		const lineIdx = parseInt(lineStr, 10);
+		const data = annotationDictionary[lineIdx];
+		const targetRange = new vscode.Range(lineIdx, 0, lineIdx, document.lineAt(lineIdx).text.length);
+		nativeDecorationsArray.push({
+			range: targetRange,
+			renderOptions: {
+				before: data.prefixes.length > 0 ? { contentText: data.prefixes.join(''), color: '#ffaa00' } : undefined,
+				after: data.suffixes.length > 0 ? { contentText: `   ${data.suffixes.join(' | ')}`, color: '#ff5555', fontStyle: 'italic' } : undefined
+			}
+		});
+	});
+
+	hellDecorationType = vscode.window.createTextEditorDecorationType({});
+	editor.setDecorations(hellDecorationType, nativeDecorationsArray);
+}
+
+module.exports = {
+	...module.exports,
+	matchNamespacePattern,
+	gatherScopedSectionLines,
+	harvestActiveDirectives,
+	evaluateDocumentIntegrity
+};
 
 
 // =================================================================================================
@@ -149,12 +251,15 @@ const sectionContentHashCache = new Map();
  * Strips markup fragments out of lines to isolate raw data strings.
  */
 function tokenizeLine(rawText) {
-	return rawText
-		.replace(/^[\s\t]*[-*+]\s+/, '')      // Strip bullet points
-		.replace(/^\[[ xX\-]?\]\s+/, '')      // Strip checkbox brackets
-		.replace(/^[A-Z_]+:\s+/, '')         // Strip custom keyword prefixes (TAG:)
-		.replace(/^(["'`])(.*)\1,?$/, '$2')  // Strip wrapping code quotes/commas
-		.trim();
+	let str = rawText.trim();
+	str = str.replace(/^[-*+]\s+/, '');      // Strip bullet points
+	str = str.trim();
+	str = str.replace(/^\[[ xX\-]?\]\s+/, '');      // Strip checkbox brackets
+	str = str.trim();
+	str = str.replace(/^[A-Z_]+:\s+/, '');         // Strip custom keyword prefixes (TAG:)
+	str = str.trim();
+	str = str.replace(/^(["'`])(.*)\1,?$/, '$2');  // Strip wrapping code quotes/commas
+	return str.trim();
 }
 
 /**
@@ -286,14 +391,13 @@ module.exports = {
 // 🎨 PART 2B: ACCUMULATIVE LIVE DECORATION VALIDATOR ENGINE
 // =================================================================================================
 
-let hellDecorationType = vscode.window.createTextEditorDecorationType({});
 
 /**
  * Parses all scattered directive configurations across the canvas text.
  */
 function harvestActiveDirectives(document) {
 	const text = document.getText();
-	const directiveRegex = /<!--\s*HELL:DIRECTIVES([\s\S]*?)-->/g;
+	const directiveRegex = /<!--\s*HELL:(?:SAMPLE\s+)?DIRECTIVES([\s\S]*?)-->/g;
 	const directives = [];
 	let match;
 
@@ -634,6 +738,752 @@ async function executeSectionSortCommand() {
 	evaluateDocumentIntegrity();
 }
 
+// --- HELL CORE UTILITIES & ADAPTERS FOR ADVANCED OPERATIONS ---
+
+function getSectionRuleTypes(sec, sections, document) {
+	const directives = harvestActiveDirectives(document);
+	const ruleTypes = new Set();
+	directives.forEach(dir => {
+		if (dir.kind !== 'marker') return;
+		const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)(>>|>1>|>2>|>-2>|>!-2>)?$/);
+		if (!tokenMatch) return;
+		const ruleType = tokenMatch[1];
+		const pathPattern = tokenMatch[2].trim();
+		const combinator = tokenMatch[3] || '>>';
+
+		const matchedSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
+		matchedSections.forEach(matchedSec => {
+			let targetNodes = [];
+			if (combinator === '>>') {
+				targetNodes = sections.filter(s => s.namespace === matchedSec.namespace || s.namespace.startsWith(matchedSec.namespace + '::'));
+			} else if (combinator === '>1>') {
+				targetNodes = sections.filter(s => s.parentNamespace === matchedSec.namespace && s.level === matchedSec.level + 1);
+			} else if (combinator === '>2>') {
+				targetNodes = sections.filter(s => s.namespace.startsWith(matchedSec.namespace + '::') && (s.level === matchedSec.level + 1 || s.level === matchedSec.level + 2));
+			} else if (combinator === '>-2>') {
+				targetNodes = sections.filter(s => s.namespace.startsWith(matchedSec.namespace + '::') && s.level > matchedSec.level + 1);
+			} else if (combinator === '>!-2>') {
+				targetNodes = sections.filter(s => s.namespace.startsWith(matchedSec.namespace + '::') && s.namespace !== matchedSec.namespace && s.level > matchedSec.level + 1);
+			}
+
+			if (targetNodes.some(s => s.namespace === sec.namespace)) {
+				ruleTypes.add(ruleType);
+			}
+		});
+	});
+	return ruleTypes;
+}
+
+async function writeSectionContent(editor, sec, sections, newLines) {
+	const document = editor.document;
+	const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
+	const startLine = sec.lineIndex + 1;
+	const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
+
+	const range = new vscode.Range(new vscode.Position(startLine, 0), new vscode.Position(endLine, 0));
+
+	let textToInsert = newLines.map(l => l.trim().startsWith('-') || l.trim().startsWith('*') || l.trim().startsWith('+') || l.trim().startsWith('\t') || l.trim().startsWith(' ') ? l : `- ${l}`).join('\n');
+	if (textToInsert && !textToInsert.endsWith('\n')) {
+		textToInsert += '\n';
+	}
+
+	await editor.edit(editBuilder => {
+		editBuilder.replace(range, textToInsert);
+	});
+
+	evaluateDocumentIntegrity();
+}
+
+function getActiveItems(editor) {
+	const document = editor.document;
+	const selection = editor.selection;
+	const startLine = selection.start.line;
+	const endLine = selection.end.line;
+	const items = [];
+	for (let i = startLine; i <= endLine; i++) {
+		const text = document.lineAt(i).text;
+		const trimmed = text.trim();
+		if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('~') || trimmed.startsWith('#')) {
+			continue;
+		}
+		items.push({ lineIndex: i, text: text });
+	}
+	return items;
+}
+
+function getActiveSectionForCursor(editor, sections) {
+	const cursorLine = editor.selection.active.line;
+	return [...sections].reverse().find(s => s.lineIndex <= cursorLine);
+}
+
+async function relocateItem(editor, items, targetSec, actionType = null, forcedMode = null) {
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+
+	let selectedAction = actionType;
+	if (!selectedAction) {
+		const choice = await vscode.window.showQuickPick([
+			{ label: "📋 Copy Item(s)", value: "copy" },
+			{ label: "📦 Move Item(s)", value: "move" }
+		], { placeHolder: "Choose action for the active item(s)" });
+		if (!choice) return;
+		selectedAction = choice.value;
+	}
+
+	const rules = getSectionRuleTypes(targetSec, sections, document);
+	let insertMode = forcedMode || "append";
+	if (rules.has("UNIQUE") || rules.has("ALPHA")) {
+		insertMode = "merge";
+	} else if (!forcedMode) {
+		const modeChoice = await vscode.window.showQuickPick([
+			{ label: "📥 Prepend", value: "prepend", description: "Insert at the top of the section" },
+			{ label: "📤 Append (Amend)", value: "append", description: "Insert at the bottom of the section" },
+			{ label: "🔄 Merge (No duplicates)", value: "merge", description: "Ensure item does not exist, then append" }
+		], { placeHolder: `How should the item(s) be inserted into '${targetSec.title}'?` });
+		if (!modeChoice) return;
+		insertMode = modeChoice.value;
+	}
+
+	const originalLines = targetSec.contentLines.map(l => l.raw);
+	let resultLines = [...originalLines];
+
+	for (const item of items) {
+		const rawText = item.text;
+		const cleanVal = tokenizeLine(rawText);
+
+		if (insertMode === "merge" || rules.has("UNIQUE") || rules.has("ALPHA")) {
+			const exists = resultLines.some(l => tokenizeLine(l) === cleanVal);
+			if (!exists) {
+				resultLines.push(rawText);
+			}
+		} else if (insertMode === "prepend") {
+			resultLines.unshift(rawText);
+		} else {
+			resultLines.push(rawText);
+		}
+	}
+
+	if (rules.has("ALPHA")) {
+		resultLines.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
+	}
+
+	await writeSectionContent(editor, targetSec, sections, resultLines);
+
+	if (selectedAction === "move") {
+		const sortedItemsToDelete = [...items].sort((a, b) => b.lineIndex - a.lineIndex);
+		await editor.edit(editBuilder => {
+			for (const item of sortedItemsToDelete) {
+				const lineRange = new vscode.Range(item.lineIndex, 0, item.lineIndex + 1, 0);
+				editBuilder.delete(lineRange);
+			}
+		});
+	}
+
+	const freshSections = parseDocumentSections(document);
+	const freshTargetSec = freshSections.find(s => s.namespace === targetSec.namespace);
+	if (freshTargetSec) {
+		handleFollowFocusRouting(editor, freshTargetSec.lineIndex + 1, freshTargetSec.namespace);
+	}
+
+	vscode.window.showInformationMessage(`Successfully executed ${selectedAction} to '${targetSec.title}' using ${insertMode} mode!`);
+}
+
+async function dispatchMoveItemDirection(direction) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+
+	const currentSec = getActiveSectionForCursor(editor, sections);
+	if (!currentSec) {
+		vscode.window.showWarningMessage("HELL: No parent heading section containing current cursor.");
+		return;
+	}
+
+	const items = getActiveItems(editor);
+	if (items.length === 0) {
+		vscode.window.showWarningMessage("HELL: No valid list items found under selection.");
+		return;
+	}
+
+	let targetSec = null;
+	const currentIndex = sections.findIndex(s => s.namespace === currentSec.namespace);
+
+	if (direction === 'prev') {
+		if (currentIndex <= 0) {
+			vscode.window.showWarningMessage("HELL: No previous section found.");
+			return;
+		}
+		targetSec = sections[currentIndex - 1];
+	} else if (direction === 'next') {
+		if (currentIndex === -1 || currentIndex === sections.length - 1) {
+			vscode.window.showWarningMessage("HELL: No next section found downstream.");
+			return;
+		}
+		targetSec = sections[currentIndex + 1];
+	} else if (direction === 'parent') {
+		if (!currentSec.parentNamespace) {
+			vscode.window.showWarningMessage("HELL: Current section has no parent heading.");
+			return;
+		}
+		targetSec = sections.find(s => s.namespace === currentSec.parentNamespace);
+		if (!targetSec) {
+			vscode.window.showWarningMessage("HELL: Parent heading section is absent.");
+			return;
+		}
+	} else if (direction === 'child') {
+		const children = sections.filter(s => s.parentNamespace === currentSec.namespace && s.level === currentSec.level + 1);
+		if (children.length === 0) {
+			const newHeaderName = await vscode.window.showInputBox({
+				prompt: "Enter the header name of the new child section to create under current heading",
+				placeHolder: "e.g. Sub Tasks"
+			});
+			if (!newHeaderName) return;
+
+			const newSectionLevel = currentSec.level + 1;
+			const headingText = "\n" + "#".repeat(newSectionLevel) + " " + newHeaderName.trim();
+
+			const nextSec = sections.find(s => s.lineIndex > currentSec.lineIndex);
+			const insertLine = nextSec ? nextSec.lineIndex : document.lineCount;
+			const insertPos = new vscode.Position(insertLine, 0);
+
+			await editor.edit(editBuilder => {
+				editBuilder.insert(insertPos, headingText + "\n\n");
+			});
+
+			const freshSecs = parseDocumentSections(document);
+			const newNamespace = `${currentSec.namespace}::${newHeaderName.trim()}`;
+			targetSec = freshSecs.find(s => s.namespace === newNamespace);
+		} else if (children.length === 1) {
+			targetSec = children[0];
+		} else {
+			const parentChoice = await vscode.window.showQuickPick(children.map(s => ({
+				label: s.namespace,
+				section: s
+			})), { placeHolder: "Select a child section to target" });
+			if (!parentChoice) return;
+			targetSec = parentChoice.section;
+		}
+	} else if (direction === 'sibling') {
+		const siblings = sections.filter(s => s.parentNamespace === currentSec.parentNamespace && s.level === currentSec.level && s.namespace !== currentSec.namespace);
+		if (siblings.length === 0) {
+			vscode.window.showWarningMessage("HELL: Current section has no active sibling headings.");
+			return;
+		}
+		if (siblings.length === 1) {
+			targetSec = siblings[0];
+		} else {
+			const choice = await vscode.window.showQuickPick(siblings.map(s => ({
+				label: s.namespace,
+				section: s
+			})), { placeHolder: "Select a sibling heading section" });
+			if (!choice) return;
+			targetSec = choice.section;
+		}
+	}
+
+	if (targetSec) {
+		await relocateItem(editor, items, targetSec);
+	}
+}
+
+async function executeItemPrimitiveCommand(mode) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+
+	const items = getActiveItems(editor);
+	if (items.length === 0) {
+		vscode.window.showWarningMessage("HELL: No valid list items selected.");
+		return;
+	}
+
+	const targets = sections.map(s => ({
+		label: s.namespace,
+		section: s
+	}));
+	const targetChoice = await vscode.window.showQuickPick(targets, {
+		placeHolder: `Select target section to ${mode} item(s) into`
+	});
+	if (!targetChoice) return;
+
+	await relocateItem(editor, items, targetChoice.section, "copy", mode);
+}
+
+async function executeGeneralItemCopyCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+
+	const items = getActiveItems(editor);
+	if (items.length === 0) {
+		vscode.window.showWarningMessage("HELL: No valid items selected.");
+		return;
+	}
+
+	const targets = sections.map(s => ({
+		label: s.namespace,
+		section: s
+	}));
+	const choice = await vscode.window.showQuickPick(targets, {
+		placeHolder: "Select a target section to copy the selection into"
+	});
+	if (!choice) return;
+
+	await relocateItem(editor, items, choice.section, "copy");
+}
+
+async function executeGeneralItemMoveCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+
+	const items = getActiveItems(editor);
+	if (items.length === 0) {
+		vscode.window.showWarningMessage("HELL: No valid items selected.");
+		return;
+	}
+
+	const targets = sections.map(s => ({
+		label: s.namespace,
+		section: s
+	}));
+	const choice = await vscode.window.showQuickPick(targets, {
+		placeHolder: "Select a target section to move the selection into"
+	});
+	if (!choice) return;
+
+	await relocateItem(editor, items, choice.section, "move");
+}
+
+function parsePipelineDirectiveLine(lineText) {
+	const match = lineText.match(/^(EXPORT|IMPORT)\s+([^\s]+)\s+([^\s]+)\s+([^>]+)(>>|>1>|>2>|>-2>|>!-2>)\s+(.*)$/);
+	if (!match) {
+		const autoMatch = lineText.match(/^(EXPORT|IMPORT)\s+AUTO\s+([^\s]+)\s+([^\s]+)\s+([^>]+)(>>|>1>|>2>|>-2>|>!-2>)\s+(.*)$/);
+		if (autoMatch) {
+			return {
+				operation: autoMatch[1],
+				isAuto: true,
+				name: autoMatch[2],
+				filePath: autoMatch[3],
+				sectionPattern: autoMatch[4].trim(),
+				combinator: autoMatch[5],
+				options: autoMatch[6].trim().split(/\s+/)
+			};
+		}
+		return null;
+	}
+	return {
+		operation: match[1],
+		isAuto: false,
+		name: match[2],
+		filePath: match[3],
+		sectionPattern: match[4].trim(),
+		combinator: match[5],
+		options: match[6].trim().split(/\s+/)
+	};
+}
+
+async function executePipeline(editor, pipeline, sections) {
+	const document = editor.document;
+	const fileDir = path.dirname(document.uri.fsPath);
+	const targetFilePath = path.resolve(fileDir, pipeline.filePath);
+
+	const targetFolder = path.dirname(targetFilePath);
+	if (!fs.existsSync(targetFolder)) {
+		fs.mkdirSync(targetFolder, { recursive: true });
+	}
+
+	const sec = sections.find(s => matchNamespacePattern(pipeline.sectionPattern, s.namespace));
+	if (!sec) {
+		vscode.window.showWarningMessage(`HELL Pipeline error: Target section '${pipeline.sectionPattern}' not found in document.`);
+		return;
+	}
+
+	const combinator = pipeline.combinator || '>>';
+	const options = pipeline.options || [];
+
+	if (pipeline.operation === 'EXPORT') {
+		const lines = gatherScopedSectionLines(sec, sections, combinator);
+		let textLines = [];
+		if (options.includes('STRIP')) {
+			textLines = lines.map(l => l.clean);
+		} else {
+			textLines = lines.map(l => l.raw);
+		}
+		if (options.includes('UNIQUE')) {
+			textLines = Array.from(new Set(textLines));
+		}
+		if (options.includes('SORT')) {
+			textLines.sort();
+		}
+		let fileContent = '';
+		if (pipeline.filePath.endsWith('.json')) {
+			fileContent = JSON.stringify(textLines, null, 2);
+		} else {
+			fileContent = textLines.join('\n') + '\n';
+		}
+		fs.writeFileSync(targetFilePath, fileContent, 'utf8');
+		vscode.window.showInformationMessage(`Successfully executed EXPORT named '${pipeline.name}' to file: ${pipeline.filePath}`);
+	} else if (pipeline.operation === 'IMPORT') {
+		if (!fs.existsSync(targetFilePath)) {
+			vscode.window.showWarningMessage(`HELL Pipeline error: Source import file '${pipeline.filePath}' does not exist.`);
+			return;
+		}
+		const fileData = fs.readFileSync(targetFilePath, 'utf8');
+		let incomingLines = [];
+		if (pipeline.filePath.endsWith('.json')) {
+			try {
+				const arr = JSON.parse(fileData);
+				incomingLines = Array.isArray(arr) ? arr.map(String) : [];
+			} catch (e) {
+				vscode.window.showErrorMessage(`HELL Pipeline error: Failed to parse JSON from ${pipeline.filePath}`);
+				return;
+			}
+		} else {
+			incomingLines = fileData.split(/\r?\n/).filter(Boolean);
+		}
+		const cleanIncoming = incomingLines.map(tokenizeLine);
+		const existingLines = gatherScopedSectionLines(sec, sections, combinator);
+		let finalLines = existingLines.map(l => l.raw);
+
+		if (options.includes('REPLACE')) {
+			finalLines = incomingLines;
+		} else if (options.includes('ADD')) {
+			for (const line of incomingLines) {
+				const cleanLine = tokenizeLine(line);
+				if (!finalLines.some(fl => tokenizeLine(fl) === cleanLine)) {
+					finalLines.push(line);
+				}
+			}
+		} else if (options.includes('SUBTRACT')) {
+			const incomingCleans = new Set(cleanIncoming);
+			finalLines = finalLines.filter(fl => !incomingCleans.has(tokenizeLine(fl)));
+		} else {
+			finalLines.push(...incomingLines);
+		}
+		if (options.includes('UNIQUE')) {
+			const cleans = new Set();
+			finalLines = finalLines.filter(line => {
+				const cl = tokenizeLine(line);
+				if (cleans.has(cl)) return false;
+				cleans.add(cl);
+				return true;
+			});
+		}
+		if (options.includes('SORT')) {
+			finalLines.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
+		}
+		await writeSectionContent(editor, sec, sections, finalLines);
+		vscode.window.showInformationMessage(`Successfully executed IMPORT named '${pipeline.name}' from file: ${pipeline.filePath}`);
+	}
+}
+
+async function executeNamedExportCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const document = editor.document;
+	const text = document.getText();
+	const directives = harvestActiveDirectives(document);
+	const exportPipelines = [];
+	directives.forEach(dir => {
+		if (dir.kind !== 'pipeline') return;
+		const parsed = parsePipelineDirectiveLine(dir.raw);
+		if (parsed && parsed.operation === 'EXPORT') {
+			exportPipelines.push(parsed);
+		}
+	});
+	if (exportPipelines.length === 0) {
+		const directivesMatch = text.match(/<!--\s*HELL:(?:SAMPLE\s+)?DIRECTIVES([\s\S]*?)-->/);
+		await editor.edit(editBuilder => {
+			if (directivesMatch) {
+				const matchEndIdx = text.indexOf(directivesMatch[0]) + directivesMatch[0].length;
+				const endCommentPos = document.positionAt(matchEndIdx - 3);
+				editBuilder.insert(endCommentPos, "\n// EXPORT sample_export ./backups/export.json SectionA >> REPLACE SORT STRIP UNIQUE\n");
+			} else {
+				editBuilder.insert(new vscode.Position(0, 0), DIRECTIVES_EXAMPLE_TEMPLATE + "\n\n");
+			}
+		});
+		vscode.window.showInformationMessage("HELL: No EXPORT pipelines found. Auto-inserted a sample reference snippet.");
+		return;
+	}
+	const choices = exportPipelines.map(p => ({
+		label: p.name,
+		description: `Export to ${p.filePath}`,
+		detail: `Section: ${p.sectionPattern} using combinator ${p.combinator}`,
+		pipeline: p
+	}));
+	const choice = await vscode.window.showQuickPick(choices, {
+		placeHolder: "Select a named EXPORT pipeline to dispatch"
+	});
+	if (!choice) return;
+	const sections = parseDocumentSections(document);
+	await executePipeline(editor, choice.pipeline, sections);
+}
+
+async function executeInsertExampleCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const cursorPosition = editor.selection.active;
+	const sampleTemplate = `<!-- HELL:SAMPLE DIRECTIVES
+strip out the SAMPLE text string designator token keyword above to make these options operational.
+all active commands, file pipelines and alignment scripts must stay wrapped inside HTML code comments.
+
+// EXPORT standard_backup ./backups/backup.json Phase 1::Active Tasks >> REPLACE SORT STRIP UNIQUE
+IMPORT AUTO shared_data ./data/shared.json Global Registry::Incoming Items >> ADD SORT UNIQUE
+
+🔸 UNIQUE Phase 1::Bugs
+🔸 ALPHA Sprint *::Tasks
+🔸 UNIQUE **::Notes
+🔸 ALPHA Release /(1|2)/::Logs
+
+🔸 UNIQUE Production Container >>
+🔸 UNIQUE Master Index >1>
+🔸 ALPHA Master Index >2>
+🔸 UNIQUE Master Index >-2>
+🔸 UNIQUE Master Index >!-2>
+
+FOLLOW COPY MOVE {global}
+FOLLOW -MOVE
+-->`;
+	await editor.edit(editBuilder => {
+		editBuilder.insert(cursorPosition, sampleTemplate + "\n");
+	});
+	vscode.window.showInformationMessage("HELL: Automatically stamped example config block comment under cursor.");
+}
+
+async function configureSectionContentInteractive(editor, sections) {
+	const stack = new PickerStack();
+	return new Promise(async (resolve) => {
+		const stepSelectSection = async () => {
+			stack.push(stepSelectSection);
+			const items = sections.map(s => ({
+				label: s.namespace,
+				description: `Heading Level ${s.level}`,
+				section: s
+			}));
+			const choice = await vscode.window.showQuickPick(stack.injectBackItem(items), {
+				placeHolder: "Select a Section to inspect"
+			});
+			if (stack.handleBackSelection(choice)) return;
+			if (!choice) { resolve(null); return; }
+			const selectedSec = choice.section;
+
+			const stepSelectCombinator = async () => {
+				stack.push(stepSelectCombinator);
+				const comChoices = [
+					{ label: "Exact Section Content (Self only)", value: "self" },
+					{ label: "Recursive descendants (Self and children >>)", value: ">>" },
+					{ label: "Immediate Level-1 Children only (>1>)", value: ">1>" },
+					{ label: "Children and Grandchildren (>2>)", value: ">2>" },
+					{ label: "Grandchildren and below (>-2>)", value: ">-2>" },
+					{ label: "Grandchildren and below exclusive (>!-2>)", value: ">!-2>" }
+				];
+				const comChoice = await vscode.window.showQuickPick(stack.injectBackItem(comChoices), {
+					placeHolder: "Choose hierarchy/child recursion combinator"
+				});
+				if (stack.handleBackSelection(comChoice)) return;
+				if (!comChoice) { resolve(null); return; }
+				const comValue = comChoice.value;
+
+				const stepSelectFormatting = async () => {
+					stack.push(stepSelectFormatting);
+					const formatChoices = [
+						{ label: "Raw string lines (Original bullets & formats)", value: "raw" },
+						{ label: "Clean tokens (Strip bullets and brackets)", value: "clean" }
+					];
+					const formatChoice = await vscode.window.showQuickPick(stack.injectBackItem(formatChoices), {
+						placeHolder: "Select text cleaning formatting style"
+					});
+					if (stack.handleBackSelection(formatChoice)) return;
+					if (!formatChoice) { resolve(null); return; }
+					const formatValue = formatChoice.value;
+
+					const stepSelectModifiers = async () => {
+						stack.push(stepSelectModifiers);
+						const modifierPick = vscode.window.createQuickPick();
+						modifierPick.title = "Select manipulation modifiers";
+						modifierPick.canSelectMany = true;
+
+						const modItems = [
+							{ label: "Alphabetical Sort", value: "sort" },
+							{ label: "Unique items only", value: "unique" }
+						];
+						modifierPick.items = stack.injectBackItem(modItems);
+						modifierPick.onDidAccept(async () => {
+							const selectedMods = modifierPick.selectedItems.map(si => si.value);
+							modifierPick.dispose();
+
+							let resultLines = [];
+							if (comValue === "self") {
+								resultLines = selectedSec.contentLines;
+							} else {
+								let targetNodes = [];
+								if (comValue === '>>') {
+									targetNodes = sections.filter(s => s.namespace === selectedSec.namespace || s.namespace.startsWith(selectedSec.namespace + '::'));
+								} else if (comValue === '>1>') {
+									targetNodes = sections.filter(s => s.parentNamespace === selectedSec.namespace && s.level === selectedSec.level + 1);
+								} else if (comValue === '>2>') {
+									targetNodes = sections.filter(s => s.namespace.startsWith(selectedSec.namespace + '::') && (s.level === selectedSec.level + 1 || s.level === selectedSec.level + 2));
+								} else if (comValue === '>-2>') {
+									targetNodes = sections.filter(s => s.namespace.startsWith(selectedSec.namespace + '::') && s.level > selectedSec.level + 1);
+								} else if (comValue === '>!-2>') {
+									targetNodes = sections.filter(s => s.namespace.startsWith(selectedSec.namespace + '::') && s.namespace !== selectedSec.namespace && s.level > selectedSec.level + 1);
+								}
+								targetNodes.forEach(node => resultLines.push(...node.contentLines));
+							}
+
+							let outputStrings = resultLines.map(l => formatValue === "clean" ? l.clean : l.raw);
+							if (selectedMods.includes("unique")) {
+								outputStrings = Array.from(new Set(outputStrings));
+							}
+							if (selectedMods.includes("sort")) {
+								outputStrings.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
+							}
+							resolve({ text: outputStrings.join('\n'), section: selectedSec });
+						});
+						modifierPick.show();
+					};
+					await stepSelectModifiers();
+				};
+				await stepSelectFormatting();
+			};
+			await stepSelectCombinator();
+		};
+		await stepSelectSection();
+	});
+}
+
+async function executeSectionCopyCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) return;
+	const config = await configureSectionContentInteractive(editor, sections);
+	if (!config) return;
+	await vscode.env.clipboard.writeText(config.text);
+	vscode.window.showInformationMessage(`Saved configured lines of '${config.section.title}' to clipboard!`);
+}
+
+async function executeSectionInjectCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) return;
+	const config = await configureSectionContentInteractive(editor, sections);
+	if (!config) return;
+	const activePos = editor.selection.active;
+	await editor.edit(editBuilder => {
+		editBuilder.insert(new vscode.Position(activePos.line + 1, 0), config.text + '\n');
+	});
+	vscode.window.showInformationMessage(`Successfully injected configured lines of '${config.section.title}' below cursor line!`);
+}
+
+async function executeSectionImportCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const document = editor.document;
+	const sections = parseDocumentSections(document);
+	if (sections.length === 0) return;
+	const items = sections.map(s => ({
+		label: s.namespace,
+		description: `Heading level ${s.level}`,
+		section: s
+	}));
+	const targetChoice = await vscode.window.showQuickPick(items, {
+		placeHolder: "Select a Section To Import Data into"
+	});
+	if (!targetChoice) return;
+	const selectedSec = targetChoice.section;
+	const uris = await vscode.window.showOpenDialog({
+		canSelectMany: false,
+		filters: { 'Data Files': ['json', 'txt', 'md'] },
+		openLabel: "Select source file to import"
+	});
+	if (!uris || uris.length === 0) return;
+	const filePath = uris[0].fsPath;
+	const fileData = fs.readFileSync(filePath, 'utf8');
+	let incomingLines = [];
+	if (filePath.endsWith('.json')) {
+		try {
+			const arr = JSON.parse(fileData);
+			incomingLines = Array.isArray(arr) ? arr.map(String) : [];
+		} catch (e) {
+			vscode.window.showErrorMessage(`HELL Import error: Failed to parse JSON file.`);
+			return;
+		}
+	} else {
+		incomingLines = fileData.split(/\r?\n/).filter(Boolean);
+	}
+	const rules = getSectionRuleTypes(selectedSec, sections, document);
+	let insertMode = "append";
+	if (rules.has("UNIQUE") || rules.has("ALPHA")) {
+		insertMode = "merge";
+	} else {
+		const modeChoice = await vscode.window.showQuickPick([
+			{ label: "📥 Prepend", value: "prepend" },
+			{ label: "📤 Append (Amend)", value: "append" },
+			{ label: "🔄 Merge (No duplicates)", value: "merge" }
+		], { placeHolder: "How should the imported lines be merged?" });
+		if (!modeChoice) return;
+		insertMode = modeChoice.value;
+	}
+	const originalLines = selectedSec.contentLines.map(l => l.raw);
+	let finalLines = [...originalLines];
+	for (const line of incomingLines) {
+		const cleanLine = tokenizeLine(line);
+		if (insertMode === "merge" || rules.has("UNIQUE") || rules.has("ALPHA")) {
+			if (!finalLines.some(fl => tokenizeLine(fl) === cleanLine)) {
+				finalLines.push(line);
+			}
+		} else if (insertMode === "prepend") {
+			finalLines.unshift(line);
+		} else {
+			finalLines.push(line);
+		}
+	}
+	if (rules.has("ALPHA")) {
+		finalLines.sort((a, b) => tokenizeLine(a).localeCompare(tokenizeLine(b)));
+	}
+	await writeSectionContent(editor, selectedSec, sections, finalLines);
+	vscode.window.showInformationMessage(`Imported ${incomingLines.length} lines into Section '${selectedSec.title}'!`);
+}
+
+async function executeSectionExportCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) return;
+	const sections = parseDocumentSections(editor.document);
+	if (sections.length === 0) return;
+	const config = await configureSectionContentInteractive(editor, sections);
+	if (!config) return;
+	const uri = await vscode.window.showSaveDialog({
+		filters: { 'JSON Array': ['json'], 'Text Listing': ['txt', 'md'] },
+		saveLabel: "Export Section Data"
+	});
+	if (!uri) return;
+	const filePath = uri.fsPath;
+	const rawArray = config.text.split('\n');
+	let content = '';
+	if (filePath.endsWith('.json')) {
+		content = JSON.stringify(rawArray, null, 2);
+	} else {
+		content = config.text + '\n';
+	}
+	fs.writeFileSync(filePath, content, 'utf8');
+	vscode.window.showInformationMessage(`Successfully exported data to ${path.basename(filePath)}`);
+}
+
 /**
  * Registers multi-step interactive pipelines.
  */
@@ -699,225 +1549,78 @@ function registerInteractivePipelines(context) {
 }
 
 
-// --- COMPLETE MAIN EXTENSION ACTIVATION & ROUTING ENGINE ---
-function activate(context) {
-	console.log('🔗 HELL: Semantic Markdown Data Compiler Engine Active.');
+// =================================================================================================
+// 🏁 SOLID INDUSTRIAL ENGINE LIFECYCLE EXPORTS
+// =================================================================================================
 
-	// 1. COMMAND: Insert Example Directives Template Block
-	let insertExampleCmd = vscode.commands.registerCommand('hell.directives.insertExample', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor || editor.document.languageId !== 'markdown') {
-			vscode.window.showWarningMessage('HELL: Core operations require an active Markdown document canvas.');
-			return;
-		}
-		const position = editor.selection.active;
-		await editor.edit(editBuilder => {
-			editBuilder.insert(position, DIRECTIVES_EXAMPLE_TEMPLATE + '\n');
-		});
-		vscode.window.showInformationMessage('HELL: Injected comprehensive configuration directives blueprint template!');
-	});
-	context.subscriptions.push(insertExampleCmd);
-
-	// 2. INTERACTIVE PIPELINE CORE AUTOMATIONS (Import, Export, Copy, Inject)
-	const interactiveSectionVerbs = ['copy', 'inject', 'import', 'export'];
-	interactiveSectionVerbs.forEach(verb => {
-		const commandId = `hell.section.${verb}`;
-		let pipelineCmd = vscode.commands.registerCommand(commandId, async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) return;
-			vscode.window.showInformationMessage(`HELL: Launched ${verb.toUpperCase()} pipeline manager.`);
-		});
-		context.subscriptions.push(pipelineCmd);
-	});
-
-	// 3. NAMED EXPORT DIRECTIVE ENGINE DISPATCHER
-	let namedExportCmd = vscode.commands.registerCommand('hell.export.execute', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) return;
-
-		const directives = harvestActiveDirectives(editor.document);
-		const exportConfigs = directives.filter(d => d.kind === 'pipeline' && d.raw.startsWith('EXPORT'));
-
-		if (exportConfigs.length === 0) {
-			vscode.window.showWarningMessage("HELL: No active named export directives detected. Injected helpful example reference layout.");
-			return;
-		}
-
-		const selection = await vscode.window.showQuickPick(exportConfigs.map(c => ({ label: c.raw })), {
-			placeHolder: "⚡ Select which named directive string execution package to force dispatch"
-		});
-	});
-	context.subscriptions.push(namedExportCmd);
-
-	// 4. ITEM LEVEL CRUD PRIMITIVES (Append, Prepend, Merge)
-	const itemMutationVerbs = ['append', 'prepend', 'merge'];
-	itemMutationVerbs.forEach(verb => {
-		let itemMutationCmd = vscode.commands.registerCommand(`hell.item.${verb}`, async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) return;
-
-			const document = editor.document;
-			const cursorLine = editor.selection.active.line;
-			const activeLineObj = document.lineAt(cursorLine);
-			const activeLineText = activeLineObj.text;
-
-			if (activeLineText.trim().startsWith('//') || activeLineText.trim().startsWith('~')) {
-				vscode.window.setStatusBarMessage("HELL: Active line is filtered comment. Bypassed action.", 3000);
-				return;
-			}
-
-			const sections = parseDocumentSections(document);
-			const choice = await vscode.window.showQuickPick(sections.map(s => ({ label: s.namespace })), {
-				placeHolder: `📍 Choose target namespace to ${verb.toUpperCase()} active text element row`
-			});
-
-			if (!choice) return;
-			const targetSectionNode = sections.find(s => s.namespace === choice.label);
-			if (!targetSectionNode) return;
-
-			// Check for duplication checks if using MERGE operation
-			if (verb === 'merge') {
-				const matchDupe = targetSectionNode.contentLines.some(l => l.clean === tokenizeLine(activeLineText));
-				if (matchDupe) {
-					vscode.window.showWarningMessage(`HELL: Item already exists inside destination section. Merge dropped.`);
-					return;
-				}
-			}
-
-			let targetLineInsertionIndex = targetSectionNode.lineIndex + 1;
-
-			if (verb === 'append' || verb === 'merge') {
-				if (targetSectionNode.contentLines.length > 0) {
-					targetLineInsertionIndex = targetSectionNode.contentLines[targetSectionNode.contentLines.length - 1].lineIndex + 1;
-				}
-			} // 'prepend' leaves it pointing directly to index position right below header title text
-
-			await editor.edit(editBuilder => {
-				// Cut text line out from original placement context
-				editBuilder.delete(new vscode.Range(cursorLine, 0, cursorLine + 1, 0));
-				// Pipe data into the newly calculated section offset margin index
-				editBuilder.insert(new vscode.Position(targetLineInsertionIndex, 0), activeLineText + '\n');
-			});
-
-			handleFollowFocusRouting(editor, targetLineInsertionIndex, targetSectionNode.namespace);
-			evaluateDocumentIntegrity();
-		});
-		context.subscriptions.push(itemMutationCmd);
-	});
-
-	// 5. DIRECTIONAL MIGRATION MATRIX (Previous, Next, Parent, Child, Sibling)
-	const directionalTargets = ['prev', 'next', 'parent', 'child', 'sibling'];
-	directionalTargets.forEach(direction => {
-		const commandId = `hell.item.move.${direction}`;
-		let migrationCmd = vscode.commands.registerCommand(commandId, async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) return;
-
-			const document = editor.document;
-			const sections = parseDocumentSections(document);
-			const cursorLine = editor.selection.active.line;
-
-			// Handle line selection logic (Cursor line or multi-line block)
-			const activeLineObj = document.lineAt(cursorLine);
-			const activeLineText = activeLineObj.text;
-
-			if (activeLineText.trim().startsWith('//') || activeLineText.trim().startsWith('~')) {
-				vscode.window.setStatusBarMessage("HELL: Active line is filtered comment. Bypassed action.", 3000);
-				return;
-			}
-
-			const currentSecIndex = sections.findIndex(s => s.lineIndex <= cursorLine &&
-				(sections[sections.indexOf(s) + 1] ? sections[sections.indexOf(s) + 1].lineIndex > cursorLine : true));
-			const currentSec = sections[currentSecIndex];
-
-			if (!currentSec) {
-				vscode.window.showWarningMessage("HELL: Cursor must rest within a structural namespace block.");
-				return;
-			}
-
-			let targetSectionNode = null;
-
-			if (direction === 'prev' && currentSecIndex > 0) {
-				targetSectionNode = sections[currentSecIndex - 1];
-			} else if (direction === 'next' && currentSecIndex < sections.length - 1) {
-				targetSectionNode = sections[currentSecIndex + 1];
-			} else if (direction === 'parent') {
-				// FIX: Safely fallback to handle blank top-level parent namespace allocations
-				const searchParentPath = currentSec.parentNamespace || "";
-				targetSectionNode = sections.find(s => s.namespace === searchParentPath);
-			} else if (direction === 'child') {
-				targetSectionNode = sections.find(s => s.parentNamespace === currentSec.namespace);
-				if (!targetSectionNode) {
-					const newTitle = await vscode.window.showInputBox({ prompt: `Create missing child header under ${currentSec.title}` });
-					if (newTitle) {
-						const parentHeaderWeight = '#'.repeat(currentSec.level + 1);
-						const appendIndex = sections[currentSecIndex + 1] ? sections[currentSecIndex + 1].lineIndex : document.lineCount;
-						await editor.edit(editBuilder => {
-							editBuilder.insert(new vscode.Position(appendIndex, 0), `\n${parentHeaderWeight} ${newTitle}\n`);
-						});
-						setTimeout(() => vscode.commands.executeCommand(commandId), 150);
-						return;
-					}
-					return;
-				}
-			} else if (direction === 'sibling') {
-				targetSectionNode = sections.find(s => s.parentNamespace === currentSec.parentNamespace && s.namespace !== currentSec.namespace);
-			}
-
-			if (targetSectionNode) {
-				// CORE MUTATION: Cut line from current position and paste into target block section container
-				let targetLineInsertionIndex = targetSectionNode.lineIndex + 1;
-
-				// Ensure it appends cleanly to the bottom of the targeted section's array
-				if (targetSectionNode.contentLines.length > 0) {
-					targetLineInsertionIndex = targetSectionNode.contentLines[targetSectionNode.contentLines.length - 1].lineIndex + 1;
-				}
-
-				await editor.edit(editBuilder => {
-					// 1. Delete original item row line
-					const deleteRange = new vscode.Range(cursorLine, 0, cursorLine + 1, 0);
-					editBuilder.delete(deleteRange);
-
-					// 2. Insert text string at target destination layout segment index bounds
-					const insertPosition = new vscode.Position(targetLineInsertionIndex, 0);
-					editBuilder.insert(insertPosition, activeLineText + '\n');
-				});
-
-				vscode.window.setStatusBarMessage(`HELL: Migrated item line cleanly to -> ${targetSectionNode.namespace}`, 3000);
-
-				// Trigger user defined FOLLOW directive options focus updates
-				handleFollowFocusRouting(editor, targetLineInsertionIndex, currentSec.namespace);
-				evaluateDocumentIntegrity();
-			} else {
-				vscode.window.showWarningMessage(`HELL: No valid structural [${direction.toUpperCase()}] reference node exists in file hierarchy.`);
-			}
-		});
-		context.subscriptions.push(migrationCmd);
-	});
-
-	// 6. CORE TEXT UTILITY PALETTE BINDINGS & LIFECYCLE RUNTIMES
-	let sortCmd = vscode.commands.registerCommand('hell.section.sort', executeSectionSortCommand);
-	let refreshCmd = vscode.commands.registerCommand('hell.markers.refresh', () => evaluateDocumentIntegrity());
-	context.subscriptions.push(sortCmd, refreshCmd);
-
-	// Initialize real-time auto synchronization file watchers
-	initializeAutoSyncWatchers(context);
-
-	// Initialize bidirectional picker pipelines (Union workflows)
-	registerInteractivePipelines(context);
-
-	// Initial canvas paint pass on application loading
-	setTimeout(() => evaluateDocumentIntegrity(), 1000);
-}
-
-function deactivate() {
-	if (hellDecorationType) hellDecorationType.dispose();
-}
-
+const baseActivate = module.exports.activate;
 module.exports = {
-	activate,
-	deactivate,
-	activeAutoSyncLocks,
-	sectionContentHashCache,
-	PickerStack
+	activate: function (context) {
+		// Fallback safety hook call
+		if (typeof baseActivate === 'function') {
+			baseActivate(context);
+		}
+
+		// Initialize active real-time watchers and picker systems internally
+		initializeAutoSyncWatchers(context);
+		registerInteractivePipelines(context);
+
+		// Bind core palette actions
+		let sortCmd = vscode.commands.registerCommand('hell.section.sort', executeSectionSortCommand);
+		let refreshCmd = vscode.commands.registerCommand('hell.markers.refresh', () => evaluateDocumentIntegrity());
+
+		// Directive and pipeline commands
+		let insertExampleCmd = vscode.commands.registerCommand('hell.directives.insertExample', executeInsertExampleCommand);
+		let exportExecuteCmd = vscode.commands.registerCommand('hell.export.execute', executeNamedExportCommand);
+
+		// Section manipulation commands
+		let sectionCopyCmd = vscode.commands.registerCommand('hell.section.copy', executeSectionCopyCommand);
+		let sectionInjectCmd = vscode.commands.registerCommand('hell.section.inject', executeSectionInjectCommand);
+		let sectionImportCmd = vscode.commands.registerCommand('hell.section.import', executeSectionImportCommand);
+		let sectionExportCmd = vscode.commands.registerCommand('hell.section.export', executeSectionExportCommand);
+
+		// Item relocation & primitive commands
+		let appendCmd = vscode.commands.registerCommand('hell.item.append', () => executeItemPrimitiveCommand('append'));
+		let prependCmd = vscode.commands.registerCommand('hell.item.prepend', () => executeItemPrimitiveCommand('prepend'));
+		let mergeCmd = vscode.commands.registerCommand('hell.item.merge', () => executeItemPrimitiveCommand('merge'));
+
+		let movePrevCmd = vscode.commands.registerCommand('hell.item.move.prev', () => dispatchMoveItemDirection('prev'));
+		let moveNextCmd = vscode.commands.registerCommand('hell.item.move.next', () => dispatchMoveItemDirection('next'));
+		let moveParentCmd = vscode.commands.registerCommand('hell.item.move.parent', () => dispatchMoveItemDirection('parent'));
+		let moveChildCmd = vscode.commands.registerCommand('hell.item.move.child', () => dispatchMoveItemDirection('child'));
+		let moveSiblingCmd = vscode.commands.registerCommand('hell.item.move.sibling', () => dispatchMoveItemDirection('sibling'));
+
+		let generalItemCopyCmd = vscode.commands.registerCommand('hell.item.copy', executeGeneralItemCopyCommand);
+		let generalItemMoveCmd = vscode.commands.registerCommand('hell.item.move', executeGeneralItemMoveCommand);
+
+		context.subscriptions.push(
+			sortCmd,
+			refreshCmd,
+			insertExampleCmd,
+			exportExecuteCmd,
+			sectionCopyCmd,
+			sectionInjectCmd,
+			sectionImportCmd,
+			sectionExportCmd,
+			appendCmd,
+			prependCmd,
+			mergeCmd,
+			movePrevCmd,
+			moveNextCmd,
+			moveParentCmd,
+			moveChildCmd,
+			moveSiblingCmd,
+			generalItemCopyCmd,
+			generalItemMoveCmd
+		);
+
+		// Initial paint pass
+		setTimeout(() => evaluateDocumentIntegrity(), 500);
+	},
+	deactivate: function () {
+		// Clean up allocation layers to prevent memory leaks on exit
+		if (hellDecorationType) {
+			hellDecorationType.dispose();
+		}
+	}
 };

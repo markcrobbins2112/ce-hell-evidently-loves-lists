@@ -12,15 +12,13 @@
 - ▪️[SPEC.md](SPEC.md)
 - ▪️[TESTING.md](TESTING.md)
 
-<!--
-template
-## [ ] Incoming tasks from chat
-{ai supplied checkboxed task list tree:}
-- [ ] NEW: Fix the keybindings picker to allow search on detail and description
-	- [ ] NEW: Every command should have its own section with links back to command index table
-		- [ ] NEW: each command section should give extensive explaination and example code on how it works
-		- [ ] NEW: several examples may be required
--->
+## [x] Incoming tasks from chat
+- [x] NEW: Fix SectionA duplicate detection by supporting SAMPLE and checking quote tokenization with indentation
+- [x] NEW: Fix "copy/move to next section fails if next section does not have a newline below"
+- [x] NEW: Copy/Move interactive picker: choice between Copy or Move
+- [x] NEW: Implement standalone/primitive commands for item appending, prepending, and merging
+- [x] NEW: Let users decide how to insert (prepend, append/amend, merge) when copying or moving items unless list is ALPHA or UNIQUE, in which case bypass and always merge/auto-sort.
+
 
 ## [ ] New Changes
 <!-- template

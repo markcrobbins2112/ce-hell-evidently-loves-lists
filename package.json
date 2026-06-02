@@ -37,7 +37,28 @@
 		"@types/vscode": "^1.80.0",
 		"@vscode/vsce": "^3.6.2"
 	},
-	"activationEvents": [],
+	"activationEvents": [
+		"onLanguage:markdown",
+		"onCommand:hell.directives.insertExample",
+		"onCommand:hell.export.execute",
+		"onCommand:hell.section.sort",
+		"onCommand:hell.section.union",
+		"onCommand:hell.section.copy",
+		"onCommand:hell.section.inject",
+		"onCommand:hell.section.import",
+		"onCommand:hell.section.export",
+		"onCommand:hell.item.append",
+		"onCommand:hell.item.prepend",
+		"onCommand:hell.item.merge",
+		"onCommand:hell.item.move.prev",
+		"onCommand:hell.item.move.next",
+		"onCommand:hell.item.move.parent",
+		"onCommand:hell.item.move.child",
+		"onCommand:hell.item.move.sibling",
+		"onCommand:hell.item.copy",
+		"onCommand:hell.item.move",
+		"onCommand:hell.markers.refresh"
+	],
 	"contributes": {
 		"languages": [
 			{
@@ -130,6 +151,16 @@
 				"category": "HELL"
 			},
 			{
+				"command": "hell.item.copy",
+				"title": "HELL: Copy Active Item(s) to Section...",
+				"category": "HELL"
+			},
+			{
+				"command": "hell.item.move",
+				"title": "HELL: Move Active Item(s) to Section...",
+				"category": "HELL"
+			},
+			{
 				"command": "hell.markers.refresh",
 				"title": "HELL: Re-evaluate Section Integrity Indicators (Lint Markers)",
 				"category": "HELL"
@@ -199,6 +230,14 @@
 				},
 				{
 					"command": "hell.item.move.sibling",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.copy",
+					"when": "editorLangId == markdown"
+				},
+				{
+					"command": "hell.item.move",
 					"when": "editorLangId == markdown"
 				},
 				{
