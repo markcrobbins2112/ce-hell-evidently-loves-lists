@@ -15,56 +15,15 @@
 ## Active Tasks Dashboard
 
 ### Fails
-- [X] OK: copy to next section fails if next section does not have a newline below
-	- '## SectionB2- 	"datac",'
-
-- [ ] FAIL: I have the following and I do not see a ::before or ::after on duplicate "data",
-	- [ ] see extension-with-befores.ts for example of working before/after
-	- [ ] I did something that made a certain section persist a state of it being sensative to duplicates, whatever that state mechanism is, clear it and remove its functionality
-
-```markdown
-<!-- HELL:DIRECTIVES
-🔸 UNIQUE SectionA >>
-🔸 UNIQUE SectionB2 >>
--->
-## SectionA
-- "data",
-- "data",
-- "datab",
-```
-### Before and After
-- Every line in the document should have a blank :before so as to even out the lines
-- Otherise the blank is removed it line hase one or more before icons
-- icons for directive violations
-	- ALPHA = 🔹
-	- SORT = 🔸
-- [ ] FAIL: if more than one before is present, all befores should be used
-- [ ] NEW: ALPHA
-	- [ ] FAIL: alpha before icon needs to be applied to the item as well as the heading with the count
-- [ ] NEW: UNIQUE
-	- [ ] FAIL: unique violations need to go on the section heading like ALPHA
-#### Data Format
-- a line can look like
-	- {optional tabs or spaces}{optional - for bullet}{optional checkbox}{optional checkbox tag}{data container}{optional user text}{optional //{more user text}}
-	- examples
-		- 1 '- [ ] FAIL: "data" comments // meta comments'
-		- 2 '- [ ] FAIL: "data", comments // meta comments'
-		- 3 '- [ ] FAIL: 'data''
-		- 4 '- [ ] FAIL: `data`'
-		- 5 '- [ ] FAIL: data'
-		- data formats
-			1. is directive FORMATQ (default)
-			2. is directive FORMATC
-			3. is directive FORMATQ
-			4. is directive FORMATQ
-			5. is directive FORMAT
-- Items being moved or copied have to adapt to the sections format
-- Items being moved or copied have to adapt to the proper indent level
-- Items being sorted use the actual data no matter its format
-- Items with bad format should be indicated by before
-- commands to deal with format
-	- [ ] FAIL: remove
-		- [ ] FAIL: this is not dependent on directives, it operates on the current lines, removing substrings
+#### Editor Jumping
+- [ ] FAIL: Important: when typing occurs, the text in editors will jump back and forth due to before
+	- even when there is no befores, so it must be due to the blank before
+	- suggest a timer and a focus hook will help instead of on editor change
+#### Commands to deal with format
+- [ ] FAIL: Format: Remove
+	- hell.format.remove
+	- [ ] FAIL: Nothing to do with directives
+	- for current items:
 		- [ ] FAIL: multi picker (show each that is present)
 			- remove indent
 			- remove bullet
@@ -73,17 +32,23 @@
 			- remove meta text after text after data
 			- remove data quotes
 			- remove data comma
-	- [ ] FAIL: add
-		- [ ] FAIL: this is not dependent on directives, it operates on the current lines, adding substrings
-		- multi picker (show each that is not present)
+- [ ] FAIL: Format: Add
+	- hell.format.add
+	- [ ] FAIL: this is not dependent on directives, it operates on the current lines, adding substrings
+	- for current items:
+		- [ ] FAIL: multi picker (show each that is not present)
 			- add indent
 			- add bullet
 			- add data quotes
 			- add data comma
 
+### Directives
+- [ ] FAIL: Directives like this should work
+	- [ ] FAIL: '<!-- ALPHA UNIQUE -->'
+
 ### Command Reference
 - [ ] NEW: Commands and their new titles
-	- [ ] NEW: AI Maintain this, push changes from here
+	- [ ] NEW: AI! Maintain this, push changes from here
 	- `hell.markers.refresh` Markers: Refresh _mr
 	- `hell.directives.insert` Directives: Insert Empty Block _dieb
 	- `hell.directives.insertExample` Directives: Insert Example Block _dixb
@@ -125,141 +90,71 @@
 
 ### New Commands
 - [ ] FAIL: Yank
-	- [ ] FAIL: Nothing happens
-	- [ ] FAIL: cut items and put them in current section
-	- [ ] FAIL: picker: from sections
-	- [ ] FAIL: with each section: picker: child depth|items
+	- [x] Nothing happens
+	- [x] cut items and put them in current section
+	- [x] from sections
+	- [x] with each section: picker: child depth|items
+	- [ ] FAIL: multi picker: all items picked so far
 	- [ ] FAIL: picker: flatten
 	- [ ] FAIL: picker: sort
 	- [ ] FAIL: picker: unique
 	- [ ] FAIL: picker: inject or copy
 	- [ ] FAIL: if inject: picker: prepend append merge
 - use new naming style
-- [ ] FAIL: Section Intersect
-	- [X] has no results
-	- [ ] FAIL: works like union but does intersection
+- [x] Section Intersect
+	- [x] has no results
+	- [x] works like union but does intersection
 		- [ ] FAIL: is doing a union should do an intersection
 			- intersection is only items existing in all sources
-- [ ] FAIL: Item Remove from Sections
-	- [ ] FAIL: does nothing
-		- [ ] offers multi-picker of all sections
-			- then for each section selected
+- [x] Item Remove from Sections
+	- hell.item.remove
+	- [ ] NEW: rename to Sections Remove Item
+		- [ ] NEW: rename to hell.sections.item.remove
+	- [x] does nothing
+		- [x] offers multi-picker of all sections
+			- [x] then for each section selected
 				- offer a depth picker
-			- then multi-picker of all chosen items
+			- [ ] FAIL: offer a depth picker for section
+			- [ ] FAIL: then multi-picker of all chosen items
 			- then remove those items
-			- this is exactly what Yank does except Yank offers another picker to copy or inject
-- [ ] FAIL: Item Inject to Sections
-	- [X] first picker should be choice between current items or new item
+- [ ] FAIL: 👹HELL: Items: Inject to Sections _iits
+	- hell.item.inject
+	- [x] first picker should be choice between current items or new item
 	- [ ] FAIL: when this executes it does damage to lines beginning with html comment first part
-	- [ ] FAIL: general fail to operate
-- [ ] FAIL: Sections Sort Child Sections
+	- [x] general fail to operate
+	- [ ] FAIL: only injects in first section
+- [ ] FAIL: 👹HELL: Sections: Sort Sections _sss
+	- hell.sections.sort
 	- [ ] FAIL: picker should be mult-pick of sections with child sections
 	- [ ] FAIL: child sections should be sorted
-	- [X] picker does not bring up list of every section with children
-- [ ] FAIL: Sections Sort Child Items
+	- [x] picker does not bring up list of every section with children
+- [ ] FAIL: 👹HELL: Sections: Sort Child Items _ssci
+	- hell.sections.sortChildItems
 	- [ ] FAIL: picker should be mult-pick of sections with child items
-	- [X] child items of selected sections should be sorted
-- [ ] NEW: Sections Unique
+	- [x] child items of selected sections should be sorted
+- [ ] NEW: 👹HELL: Sections: Unique Children _suc
+	- hell.sections.unique
+	- [ ] NEW: hell.sections.uniqueChildren
 	- [ ] NEW: picker should be a multi-pick of sections
 	- [ ] NEW: sections items should be made unique
-- [ ] NEW: Directives Unique Sections
+- [ ] NEW: 👹HELL: Directives: Unique Sections _dus
+	- hell.directives.uniqueSections
+	- add directive to section
+		- '<!-- UNIQUE -->'
 	- [ ] NEW: directives like this should work
 		- '<!-- ALPHA UNIQUE -->'
-	- [X] OK: I ran this and the dupe indicators started working, now need that undone if it is permanent. this function is meant to inject a html comment directive
-	- [X] write/reuse directive as first item in section
-- [ ] Directives Sort Sections
-	- [X] write/reuse directive as first item in section
+- [ ] 👹HELL: Directives: Sort Sections _dss
+	- hell.directives.sortSections
+	- add directive to section
+		- '<!-- ALPHA -->'
 	- [ ] NEW: directives like this should work
 		- '<!-- ALPHA UNIQUE -->'
-
-- [X] insert directives
+	- [x] write/reuse directive as first item in section
+- [x] Insert Directives
 	- below current line
-	- [X] command not found
-```markdown
-<!-- HELL:DIRECTIVES
-{cursor}
--->
-```
-- [X] wrap directives
-	- [X] wrap directives command not found
-```markdown
-<!-- HELL:DIRECTIVES
-{selection}
--->
-```
-- [X] OK: need these
-	"onCommand:hell.item.copy.prev",
-	"onCommand:hell.item.copy.next",
-	"onCommand:hell.item.copy.parent",
-	"onCommand:hell.item.copy.child",
-	"onCommand:hell.item.copy.sibling",
-- [X] and
-	hell.item.(copy|move).(prepend|append|merge)
-- [x] cant find
-	- [X] "onCommand:hell.section.sort",
-	- [x] NEW: "onCommand:hell.section.union",
-		- [X] need a picker to choose unique or all, default unique
-		- [x] NEW: before copy/inject picker put a sort/normal picker
-	- [X] "onCommand:hell.section.copy",
-	- [x] "onCommand:hell.section.inject",
-		- [X] alphabetical selection does not sort
-		- [x] sort must occur on data, not literal line, all sorts must work this way
-	- [x] "onCommand:hell.section.import",
-	- [x] "onCommand:hell.section.export",
-
-- [x] FAIL: alphabetical selection does not sort
-	- [x] FAIL: sort must occur on data, not literal line, all sorts must work this way
+	- [x] command not found
 
 ## AI Active Tasks Dashboard
-
-- [X] Task 1: Fix Extension Activation Error
-	- **Description**: Activating the extension failed because `vscode.workspace.onDidChangeActiveTextEditor` was not a function.
-	- **Remediation**: Replaced it with the correct `vscode.window.onDidChangeActiveTextEditor` API. Verified that activation now works flawlessly.
-
-- [X] Task 2: Command Category and Titles Refactoring
-	- **Description**: Remove "HELL: " prefix from command titles and update category matching globally to "👹HELL".
-	- **Remediation**: Completely refactored all command configurations inside `package.json` with the updated category.
-
-- [X] Task 3: Address Copy/Move Picker Missing Choice
-	- **Description**: Investigate and fix why the Copy or Move picker option is missing or bypassed on some commands.
-	- **Remediation**: Updated primitive standalone commands (`hell.item.append`, `hell.item.prepend`, `hell.item.merge`) to properly prompt the user with a Copy vs. Move choice block, matching the robust UX behavior of the directional migration operations.
-
-- [x] FAIL: Task 4: Fix Missing Duplicate Decoration (`::before` / `::after`) for Duplicate Core Data
-	- [X] nothing shows in before or after
-	- [X] see extension-with-befores.ts for example of working before/after
-	- **Description**: Duplicate indicator badges inside headers / lines are not visible when a Markdown document is first opened.
-	- **Remediation**:
-		- Added a `vscode.workspace.onDidOpenTextDocument` listener to safely trigger real-time auto-sync and decorator painting logic as soon as a Markdown file is opened.
-		- Refactored `extension.js` by completely removing redundant duplicate function declarations (Part 1B), consolidating logic around the more complete Part 2 definitions.
-		- Improved the directive regex to support optional trailing/leading spaces near combinators (`>>`), ensuring 100% accurate token matching for multi-level configurations.
-		- Configured initial `createTextEditorDecorationType` call styles with standard properties (color, margin, etc.) to allocate resource layers, enabling individual dynamic decoration overrides to display.
-
-- [X] Task 5: Handle Non-Newline Section Appending and Convert Indented Bullet points to Tabs
-	- **Description**: Appending to a section that lacked a trailing newline resulted in welding text directly to the heading label. Also, nested indentation needs to always use tab characters over spaces.
-	- **Remediation**:
-		- Implemented dynamic line-welding remediation in `writeSectionContent` and `runAutoSyncCycle` via `startLine >= document.lineCount` validation to automatically prefix a newline sequence if appending directly to a terminal header line.
-		- Configured code to convert leading spaces of items to tab characters, enforcing the "use tabs" indentation directive globally across nested outputs.
-
-- [X] Task 6: Implement and Register All Requested Copy/Move Palette and Block Insertion Actions
-	- **Description**: Fully implement and expose command palette configurations for custom-targeted directional actions and markdown directive block wrappers.
-	- [X] AI create a list here of all the commands you are referencing
-		- `hell.item.copy.prev` Copy Active Item(s) to Previous Section
-		- `hell.item.copy.next` Copy Active Item(s) to Next Section
-		- `hell.item.copy.parent` Copy Active Item(s) to Parent Section
-		- `hell.item.copy.child` Copy Active Item(s) to Child Section
-		- `hell.item.copy.sibling` Copy Active Item(s) to Sibling Section
-		- `hell.item.copy.prepend` Copy Active Item(s) to Section (Prepend Mode)
-		- `hell.item.copy.append` Copy Active Item(s) to Section (Append Mode)
-		- `hell.item.copy.merge` Copy Active Item(s) to Section (Merge Mode)
-		- `hell.item.move.prepend` Move Active Item(s) to Section (Prepend Mode)
-		- `hell.item.move.append` Move Active Item(s) to Section (Append Mode)
-		- `hell.item.move.merge` Move Active Item(s) to Section (Merge Mode)
-		- `hell.directives.insert` Insert Empty Directives Block
-		- `hell.directives.wrap` Wrap Selection in Directives Block
-	- **Remediation**:
-		- Registered all requested 13 commands inside `package.json` (under `activationEvents`, `commands`, and `commandPalette` menu contributions contexts) and bound them in `extension.js`.
-		- Implemented `hell.directives.insert` and `hell.directives.wrap` to dynamically stamp nested comment boundaries (`<!-- HELL:DIRECTIVES -->`) around selection blocks and current cursor lines.
-		- Created `executeItemPrimitiveActionCommand(action, mode)` and extended `dispatchMoveItemDirection(direction, forcedAction)` to let users trigger seamless, promptless directional copies/moves directly.
 
 
 ---

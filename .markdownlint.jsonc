@@ -94,7 +94,7 @@
 	}, // Enforce exact custom word casing patterns
 	"MD045": true, // Images must have alternative text descriptions
 	"MD046": {
-		"style": "consistent"
+		"style": "fenced"
 	}, // Code block layout consistency [fenced, indented, consistent]
 	"MD047": false, // Files should end with a single newline
 	"MD048": {

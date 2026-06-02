@@ -18,8 +18,17 @@
 
 
 ### Markdown
+- Checkboxes: always use uppercase X when checking off items you did
+	- lowercase x means it has been reviewed and is ok for now
+- Checkbox Tags
+	- [ ] NEW: some text
+	- [ ] OK: some text
+	- [ ] FIXED: some text
+	- [ ] FAIL: some text
+	- [ ] BUG: some text
+	- [ ] DONE: some text
+	- never alter a Checkbox Tag
 - Use dashes instead of asterisks for bullet items
-- AGENTS: never ever change an [X], never use an [X] always use lowercase [x] when completing a task
 - Always update UPPERCASE.md files (such as AITASKS.md, AILOG.md, etc.) when tasks are completed or work is performed
 - Put all chat task requests from the user on AITASKS.md first before working on them
 - If the user says 'do tasks', always state what you are going to do and then wait for the user's adjustments and approval before proceeding
@@ -34,7 +43,7 @@
 
 #### Typescript Code Style
 - use <https://google.github.io/styleguide/tsguide.html#container-classes>
-  - except Container Classes - which we want
+	- except Container Classes - which we want
 
 #### Container Classes
 ```js
@@ -122,7 +131,7 @@ StaticMethods.method = function () {}
 
 ##### Type Expressions
 - always use type expressions in jsdocs
-  - @member {readonly ActionsTargetTypes} allowedTargetTypes
+	- @member {readonly ActionsTargetTypes} allowedTargetTypes
 
 ##### JsDoc Layout
 ```js

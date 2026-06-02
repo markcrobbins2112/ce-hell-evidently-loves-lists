@@ -410,239 +410,9 @@ function harvestActiveDirectives(document) {
  * Validates document lists against user directives and updates the cumulative visual decorations.
  */
 function evaluateDocumentIntegrity() {
-	const editor = vscode.window.activeTextEditor;
-	if (!editor || editor.document.languageId !== 'markdown') return;
-
-	const document = editor.document;
-	const sections = parseDocumentSections(document);
-	const directives = harvestActiveDirectives(document);
-
-	// Dictionary tracking multiple prefixes/suffixes on the same line arrays
-	const annotationDictionary = {};
-	const registerDiagnostic = (lineIdx, prefix, suffix) => {
-		if (!annotationDictionary[lineIdx]) {
-			annotationDictionary[lineIdx] = { prefixes: [], suffixes: [] };
-		}
-		if (prefix && !annotationDictionary[lineIdx].prefixes.includes(prefix)) {
-			annotationDictionary[lineIdx].prefixes.push(prefix);
-		}
-		if (suffix && !annotationDictionary[lineIdx].suffixes.includes(suffix)) {
-			annotationDictionary[lineIdx].suffixes.push(suffix);
-		}
-	};
-
-	directives.forEach(dir => {
-		if (dir.kind !== 'marker') return;
-
-		// Parse format rules like: 🔸 UNIQUE Section::Name >>
-		const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
-
-		// Secondary regex fallback for multi-section cross relation checking (IN, NOT, USE)
-		const crossMatch = dir.raw.match(/^🔸\s*(IN|NOT|USE)\s+([^>]+?)\s*>\s*([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
-
-		if (crossMatch) {
-			const relationType = crossMatch[1];
-			const srcPattern = crossMatch[2].trim();
-			const destPattern = crossMatch[3].trim();
-			const combinator = crossMatch[4] ? crossMatch[4].trim() : '>>';
-
-			const srcSections = sections.filter(s => matchNamespacePattern(srcPattern, s.namespace));
-			const destSections = sections.filter(s => matchNamespacePattern(destPattern, s.namespace));
-
-			const srcLines = [];
-			const destLines = [];
-
-			srcSections.forEach(s => srcLines.push(...gatherScopedSectionLines(s, sections, combinator)));
-			destSections.forEach(s => destLines.push(...gatherScopedSectionLines(s, sections, combinator)));
-
-			const srcCleans = new Set(srcLines.map(l => l.clean));
-			const destCleans = new Set(destLines.map(l => l.clean));
-
-			if (relationType === 'IN') {
-				srcLines.forEach(l => {
-					if (!destCleans.has(l.clean)) {
-						registerDiagnostic(l.lineIndex, '🔸 ', `❗IN: section ${destPattern}`);
-					}
-				});
-			}
-			if (relationType === 'NOT') {
-				destLines.forEach(l => {
-					if (srcCleans.has(l.clean)) {
-						registerDiagnostic(l.lineIndex, '🔸 ', `❗NOT: section ${destPattern}`);
-					}
-				});
-			}
-			if (relationType === 'USE') {
-				srcLines.forEach(l => {
-					if (!destCleans.has(l.clean)) {
-						registerDiagnostic(l.lineIndex, '🔸 ', `❗USE: section ${destPattern}`);
-					}
-				});
-			}
-			return;
-		}
-
-		if (!tokenMatch) return;
-		const ruleType = tokenMatch[1];
-		const pathPattern = tokenMatch[2].trim();
-		const combinator = tokenMatch[3] ? tokenMatch[3].trim() : '>>';
-
-		const matchedSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
-
-		matchedSections.forEach(sec => {
-			const scopedLines = gatherScopedSectionLines(sec, sections, combinator);
-
-			if (ruleType === 'UNIQUE') {
-				const uniqueRegistry = {};
-				scopedLines.forEach(l => {
-					if (!uniqueRegistry[l.clean]) uniqueRegistry[l.clean] = [];
-					uniqueRegistry[l.clean].push(l.lineIndex);
-				});
-
-				Object.keys(uniqueRegistry).forEach(key => {
-					const occurrences = uniqueRegistry[key];
-					if (occurrences.length > 1) {
-						occurrences.forEach(lineIdx => {
-							const humanLineNumbers = occurrences.map(idx => idx + 1).join(', ');
-							registerDiagnostic(lineIdx, '🔸 ', `❗DUPE: lines: ${humanLineNumbers}`);
-						});
-					}
-				});
-			}
-
-			if (ruleType === 'ALPHA') {
-				let unsortedCount = 0;
-				for (let i = 0; i < scopedLines.length - 1; i++) {
-					if (scopedLines[i].clean.localeCompare(scopedLines[i + 1].clean) > 0) {
-						unsortedCount++;
-						registerDiagnostic(scopedLines[i + 1].lineIndex, null, '❗ALPHA: item is out of order');
-					}
-				}
-				if (unsortedCount > 0) {
-					registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
-				}
-			}
-
-			if (ruleType === 'FORMATQ' || ruleType === 'FORMATC' || ruleType === 'FORMAT') {
-				scopedLines.forEach(l => {
-					const parsed = parseMarkdownLine(l.raw);
-					let mismatch = false;
-					if (ruleType === 'FORMATQ') {
-						if (parsed.dataQuote !== '"' || parsed.hasComma) {
-							mismatch = true;
-						}
-					} else if (ruleType === 'FORMATC') {
-						if (parsed.dataQuote !== '"' || !parsed.hasComma) {
-							mismatch = true;
-						}
-					} else if (ruleType === 'FORMAT') {
-						if (parsed.dataQuote !== '' || parsed.hasComma) {
-							mismatch = true;
-						}
-					}
-					if (mismatch) {
-						registerDiagnostic(l.lineIndex, '🔸 ', `❗FORMAT: expected ${ruleType}`);
-					}
-				});
-			}
-		});
-	});
-
-	// Evaluate section-local HTML comments (e.g., <!-- UNIQUE --> or <!-- ALPHA --> or <!-- FORMATQ -->, etc.)
-	sections.forEach(sec => {
-		const localRules = new Set();
-		const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
-		const startLine = sec.lineIndex + 1;
-		const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
-
-		for (let i = startLine; i < endLine; i++) {
-			const text = document.lineAt(i).text.trim();
-			if (text.startsWith('<!--') && text.endsWith('-->')) {
-				const inner = text.substring(4, text.length - 3).trim();
-				if (inner === 'UNIQUE' || inner === 'ALPHA' || inner === 'FORMAT' || inner === 'FORMATQ' || inner === 'FORMATC') {
-					localRules.add(inner);
-				}
-			}
-		}
-
-		const scopedLines = gatherScopedSectionLines(sec, sections, '>>');
-
-		if (localRules.has('UNIQUE')) {
-			const uniqueRegistry = {};
-			scopedLines.forEach(l => {
-				if (!uniqueRegistry[l.clean]) uniqueRegistry[l.clean] = [];
-				uniqueRegistry[l.clean].push(l.lineIndex);
-			});
-
-			Object.keys(uniqueRegistry).forEach(key => {
-				const occurrences = uniqueRegistry[key];
-				if (occurrences.length > 1) {
-					occurrences.forEach(lineIdx => {
-						const humanLineNumbers = occurrences.map(idx => idx + 1).join(', ');
-						registerDiagnostic(lineIdx, '🔸 ', `❗DUPE: lines: ${humanLineNumbers}`);
-					});
-				}
-			});
-		}
-
-		if (localRules.has('ALPHA')) {
-			let unsortedCount = 0;
-			for (let i = 0; i < scopedLines.length - 1; i++) {
-				if (scopedLines[i].clean.localeCompare(scopedLines[i + 1].clean) > 0) {
-					unsortedCount++;
-					registerDiagnostic(scopedLines[i + 1].lineIndex, null, '❗ALPHA: item is out of order');
-				}
-			}
-			if (unsortedCount > 0) {
-				registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
-			}
-		}
-
-		['FORMAT', 'FORMATQ', 'FORMATC'].forEach(fType => {
-			if (localRules.has(fType)) {
-				scopedLines.forEach(l => {
-					const parsed = parseMarkdownLine(l.raw);
-					let mismatch = false;
-					if (fType === 'FORMATQ') {
-						if (parsed.dataQuote !== '"' || parsed.hasComma) {
-							mismatch = true;
-						}
-					} else if (fType === 'FORMATC') {
-						if (parsed.dataQuote !== '"' || !parsed.hasComma) {
-							mismatch = true;
-						}
-					} else if (fType === 'FORMAT') {
-						if (parsed.dataQuote !== '' || parsed.hasComma) {
-							mismatch = true;
-						}
-					}
-					if (mismatch) {
-						registerDiagnostic(l.lineIndex, '🔸 ', `❗FORMAT: expected ${fType}`);
-					}
-				});
-			}
-		});
-	});
-
-	// Flatten diagnostic map values and paint screen elements
-	const nativeDecorationsArray = [];
-	hellDecorationType.dispose();
-
-	Object.keys(annotationDictionary).forEach(lineStr => {
-		const lineIdx = parseInt(lineStr, 10);
-		const data = annotationDictionary[lineIdx];
-		const targetRange = new vscode.Range(lineIdx, 0, lineIdx, document.lineAt(lineIdx).text.length);
-
-		const decorationLayout = {
-			range: targetRange,
-			renderOptions: {
-				before: data.prefixes.length > 0 ? { contentText: data.prefixes.join(''), color: '#ffaa00' } : undefined,
-				after: data.suffixes.length > 0 ? { contentText: `   ${data.suffixes.join(' | ')}`, color: '#ff5555', fontStyle: 'italic' } : undefined
-			}
-		};
-		nativeDecorationsArray.push(decorationLayout);
-	});
-
+	if (hellDecorationType) {
+		hellDecorationType.dispose();
+	}
 	hellDecorationType = vscode.window.createTextEditorDecorationType({
 		before: {
 			color: '#ffaa00',
@@ -654,7 +424,263 @@ function evaluateDocumentIntegrity() {
 			margin: '0 0 0 12px'
 		}
 	});
-	editor.setDecorations(hellDecorationType, nativeDecorationsArray);
+
+	const editors = vscode.window.visibleTextEditors;
+	editors.forEach(editor => {
+		if (!editor || editor.document.languageId !== 'markdown') return;
+
+		const document = editor.document;
+		const sections = parseDocumentSections(document);
+		const directives = harvestActiveDirectives(document);
+
+		// Dictionary tracking multiple prefixes/suffixes on the same line arrays
+		const annotationDictionary = {};
+		const registerDiagnostic = (lineIdx, prefix, suffix) => {
+			if (!annotationDictionary[lineIdx]) {
+				annotationDictionary[lineIdx] = { prefixes: [], suffixes: [] };
+			}
+			if (prefix && !annotationDictionary[lineIdx].prefixes.includes(prefix)) {
+				annotationDictionary[lineIdx].prefixes.push(prefix);
+			}
+			if (suffix && !annotationDictionary[lineIdx].suffixes.includes(suffix)) {
+				annotationDictionary[lineIdx].suffixes.push(suffix);
+			}
+		};
+
+		directives.forEach(dir => {
+			if (dir.kind !== 'marker') return;
+
+			// Parse format rules like: 🔸 UNIQUE Section::Name >>
+			const tokenMatch = dir.raw.match(/^🔸\s*([A-Z_]+)\s+([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
+
+			// Secondary regex fallback for multi-section cross relation checking (IN, NOT, USE)
+			const crossMatch = dir.raw.match(/^🔸\s*(IN|NOT|USE)\s+([^>]+?)\s*>\s*([^>]+?)\s*(>>|>1>|>2>|>-2>|>!-2>)?\s*$/);
+
+			if (crossMatch) {
+				const relationType = crossMatch[1];
+				const srcPattern = crossMatch[2].trim();
+				const destPattern = crossMatch[3].trim();
+				const combinator = crossMatch[4] ? crossMatch[4].trim() : '>>';
+
+				const srcSections = sections.filter(s => matchNamespacePattern(srcPattern, s.namespace));
+				const destSections = sections.filter(s => matchNamespacePattern(destPattern, s.namespace));
+
+				const srcLines = [];
+				const destLines = [];
+
+				srcSections.forEach(s => srcLines.push(...gatherScopedSectionLines(s, sections, combinator)));
+				destSections.forEach(s => destLines.push(...gatherScopedSectionLines(s, sections, combinator)));
+
+				const srcCleans = new Set(srcLines.map(l => l.clean));
+				const destCleans = new Set(destLines.map(l => l.clean));
+
+				if (relationType === 'IN') {
+					srcLines.forEach(l => {
+						if (!destCleans.has(l.clean)) {
+							registerDiagnostic(l.lineIndex, '🔸 ', `❗IN: section ${destPattern}`);
+						}
+					});
+				}
+				if (relationType === 'NOT') {
+					destLines.forEach(l => {
+						if (srcCleans.has(l.clean)) {
+							registerDiagnostic(l.lineIndex, '🔸 ', `❗NOT: section ${destPattern}`);
+						}
+					});
+				}
+				if (relationType === 'USE') {
+					srcLines.forEach(l => {
+						if (!destCleans.has(l.clean)) {
+							registerDiagnostic(l.lineIndex, '🔸 ', `❗USE: section ${destPattern}`);
+						}
+					});
+				}
+				return;
+			}
+
+			if (!tokenMatch) return;
+			const ruleType = tokenMatch[1];
+			const pathPattern = tokenMatch[2].trim();
+			const combinator = tokenMatch[3] ? tokenMatch[3].trim() : '>>';
+
+			const matchedSections = sections.filter(s => matchNamespacePattern(pathPattern, s.namespace));
+
+			matchedSections.forEach(sec => {
+				const scopedLines = gatherScopedSectionLines(sec, sections, combinator);
+
+				if (ruleType === 'UNIQUE') {
+					const uniqueRegistry = {};
+					scopedLines.forEach(l => {
+						if (!uniqueRegistry[l.clean]) uniqueRegistry[l.clean] = [];
+						uniqueRegistry[l.clean].push(l.lineIndex);
+					});
+
+					let duplicateCount = 0;
+					Object.keys(uniqueRegistry).forEach(key => {
+						const occurrences = uniqueRegistry[key];
+						if (occurrences.length > 1) {
+							duplicateCount += (occurrences.length - 1);
+							occurrences.forEach(lineIdx => {
+								const humanLineNumbers = occurrences.map(idx => idx + 1).join(', ');
+								registerDiagnostic(lineIdx, '🔸 ', `❗DUPE: lines: ${humanLineNumbers}`);
+							});
+						}
+					});
+					if (duplicateCount > 0) {
+						registerDiagnostic(sec.lineIndex, '🔸 ', `❗UNIQUE: count: ${duplicateCount}`);
+					}
+				}
+
+				if (ruleType === 'ALPHA') {
+					let unsortedCount = 0;
+					for (let i = 0; i < scopedLines.length - 1; i++) {
+						if (scopedLines[i].clean.localeCompare(scopedLines[i + 1].clean) > 0) {
+							unsortedCount++;
+							registerDiagnostic(scopedLines[i + 1].lineIndex, '🔹 ', '❗ALPHA: item is out of order');
+						}
+					}
+					if (unsortedCount > 0) {
+						registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
+					}
+				}
+
+				if (ruleType === 'FORMATQ' || ruleType === 'FORMATC' || ruleType === 'FORMAT') {
+					scopedLines.forEach(l => {
+						const parsed = parseMarkdownLine(l.raw);
+						let mismatch = false;
+						if (ruleType === 'FORMATQ') {
+							if (parsed.dataQuote !== '"' || parsed.hasComma) {
+								mismatch = true;
+							}
+						} else if (ruleType === 'FORMATC') {
+							if (parsed.dataQuote !== '"' || !parsed.hasComma) {
+								mismatch = true;
+							}
+						} else if (ruleType === 'FORMAT') {
+							if (parsed.dataQuote !== '' || parsed.hasComma) {
+								mismatch = true;
+							}
+						}
+						if (mismatch) {
+							registerDiagnostic(l.lineIndex, '🔸 ', `❗FORMAT: expected ${ruleType}`);
+						}
+					});
+				}
+			});
+		});
+
+		// Evaluate section-local HTML comments (e.g., <!-- UNIQUE --> or <!-- ALPHA --> or <!-- FORMATQ -->, etc.)
+		sections.forEach(sec => {
+			const localRules = new Set();
+			const nextSec = sections.find(s => s.lineIndex > sec.lineIndex);
+			const startLine = sec.lineIndex + 1;
+			const endLine = nextSec ? nextSec.lineIndex : document.lineCount;
+
+			for (let i = startLine; i < endLine; i++) {
+				const text = document.lineAt(i).text.trim();
+				if (text.startsWith('<!--') && text.endsWith('-->')) {
+					const inner = text.substring(4, text.length - 3).trim();
+					if (inner === 'UNIQUE' || inner === 'ALPHA' || inner === 'FORMAT' || inner === 'FORMATQ' || inner === 'FORMATC') {
+						localRules.add(inner);
+					}
+				}
+			}
+
+			const scopedLines = gatherScopedSectionLines(sec, sections, '>>');
+
+			if (localRules.has('UNIQUE')) {
+				const uniqueRegistry = {};
+				scopedLines.forEach(l => {
+					if (!uniqueRegistry[l.clean]) uniqueRegistry[l.clean] = [];
+					uniqueRegistry[l.clean].push(l.lineIndex);
+				});
+
+				let duplicateCount = 0;
+				Object.keys(uniqueRegistry).forEach(key => {
+					const occurrences = uniqueRegistry[key];
+					if (occurrences.length > 1) {
+						duplicateCount += (occurrences.length - 1);
+						occurrences.forEach(lineIdx => {
+							const humanLineNumbers = occurrences.map(idx => idx + 1).join(', ');
+							registerDiagnostic(lineIdx, '🔸 ', `❗DUPE: lines: ${humanLineNumbers}`);
+						});
+					}
+				});
+				if (duplicateCount > 0) {
+					registerDiagnostic(sec.lineIndex, '🔸 ', `❗UNIQUE: count: ${duplicateCount}`);
+				}
+			}
+
+			if (localRules.has('ALPHA')) {
+				let unsortedCount = 0;
+				for (let i = 0; i < scopedLines.length - 1; i++) {
+					if (scopedLines[i].clean.localeCompare(scopedLines[i + 1].clean) > 0) {
+						unsortedCount++;
+						registerDiagnostic(scopedLines[i + 1].lineIndex, '🔹 ', '❗ALPHA: item is out of order');
+					}
+				}
+				if (unsortedCount > 0) {
+					registerDiagnostic(sec.lineIndex, '🔸 ', `❗ALPHA: count: ${unsortedCount}`);
+				}
+			}
+
+			['FORMAT', 'FORMATQ', 'FORMATC'].forEach(fType => {
+				if (localRules.has(fType)) {
+					scopedLines.forEach(l => {
+						const parsed = parseMarkdownLine(l.raw);
+						let mismatch = false;
+						if (fType === 'FORMATQ') {
+							if (parsed.dataQuote !== '"' || parsed.hasComma) {
+								mismatch = true;
+							}
+						} else if (fType === 'FORMATC') {
+							if (parsed.dataQuote !== '"' || !parsed.hasComma) {
+								mismatch = true;
+							}
+						} else if (fType === 'FORMAT') {
+							if (parsed.dataQuote !== '' || parsed.hasComma) {
+								mismatch = true;
+							}
+						}
+						if (mismatch) {
+							registerDiagnostic(l.lineIndex, '🔸 ', `❗FORMAT: expected ${fType}`);
+						}
+					});
+				}
+			});
+		});
+
+		// Every line in the document should have a blank before so as to even out the lines
+		// Otherise the blank is removed if line has one or more before icons
+		for (let i = 0; i < document.lineCount; i++) {
+			if (!annotationDictionary[i]) {
+				annotationDictionary[i] = { prefixes: [], suffixes: [] };
+			}
+			if (annotationDictionary[i].prefixes.length === 0) {
+				annotationDictionary[i].prefixes.push('\u00a0\u00a0');
+			}
+		}
+
+		// Flatten diagnostic map values and paint screen elements
+		const nativeDecorationsArray = [];
+
+		Object.keys(annotationDictionary).forEach(lineStr => {
+			const lineIdx = parseInt(lineStr, 10);
+			const data = annotationDictionary[lineIdx];
+			const targetRange = new vscode.Range(lineIdx, 0, lineIdx, document.lineAt(lineIdx).text.length);
+
+			const decorationLayout = {
+				range: targetRange,
+				renderOptions: {
+					before: data.prefixes.length > 0 ? { contentText: data.prefixes.join(''), color: '#ffaa00' } : undefined,
+					after: data.suffixes.length > 0 ? { contentText: `   ${data.suffixes.join(' | ')}`, color: '#ff5555', fontStyle: 'italic' } : undefined
+				}
+			};
+			nativeDecorationsArray.push(decorationLayout);
+		});
+
+		editor.setDecorations(hellDecorationType, nativeDecorationsArray);
+	});
 }
 
 module.exports = {
@@ -775,7 +801,8 @@ function initializeAutoSyncWatchers(context) {
 			if (vscode.window.activeTextEditor?.document === e.document) runAutoSyncCycle();
 		}),
 		vscode.window.onDidChangeActiveTextEditor(() => runAutoSyncCycle()),
-		vscode.workspace.onDidOpenTextDocument(() => runAutoSyncCycle())
+		vscode.workspace.onDidOpenTextDocument(() => runAutoSyncCycle()),
+		vscode.window.onDidChangeVisibleTextEditors(() => evaluateDocumentIntegrity())
 	);
 }
 
@@ -1004,7 +1031,9 @@ async function relocateItem(editor, items, targetSec, actionType = null, forcedM
 		}
 
 		let adaptedText = rawText;
-		if (sourceSec) {
+		if (item && item.isPreAdapted) {
+			adaptedText = rawText;
+		} else if (sourceSec) {
 			adaptedText = adaptLineToSection(rawText, targetFormat, targetSec.level, sourceSec.level);
 		} else {
 			adaptedText = adaptLineToSection(rawText, targetFormat, targetSec.level, null);
@@ -2490,7 +2519,7 @@ async function executeItemYankCommand() {
 		if (freshActiveSec) {
 			const itemsToRelocate = processedItems.map(orig => {
 				const rawText = orig.raw;
-				let itemWithNestingObj = { text: rawText, lineIndex: -1 };
+				let itemWithNestingObj = { text: rawText, lineIndex: -1, isPreAdapted: true };
 				if (!doFlatten) {
 					const directives = harvestActiveDirectives(document);
 					const targetFormat = getSectionFormat(freshActiveSec.namespace, freshSections, directives);
