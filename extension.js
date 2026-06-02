@@ -33,7 +33,7 @@ FOLLOW COPY MOVE {global}
 
 const activeAutoSyncLocks = new Map();
 const sectionContentHashCache = new Map();
-let hellDecorationType = vscode.window.createTextEditorDecorationType({});
+let hellDecorationType = vscode.window.createTextEditorDecorationType({ before: {}, after: {} });
 
 
 
@@ -354,7 +354,7 @@ function evaluateDocumentIntegrity() {
 		nativeDecorationsArray.push(decorationLayout);
 	});
 
-	hellDecorationType = vscode.window.createTextEditorDecorationType({});
+	hellDecorationType = vscode.window.createTextEditorDecorationType({ before: {}, after: {} });
 	editor.setDecorations(hellDecorationType, nativeDecorationsArray);
 }
 
@@ -830,6 +830,7 @@ async function executeItemPrimitiveCommand(mode) {
 		label: s.namespace,
 		section: s
 	}));
+	targets.sort((a, b) => a.label.localeCompare(b.label));
 	const targetChoice = await vscode.window.showQuickPick(targets, {
 		placeHolder: `Select target section to ${mode} item(s) into`
 	});
@@ -856,6 +857,7 @@ async function executeGeneralItemCopyCommand() {
 		label: s.namespace,
 		section: s
 	}));
+	targets.sort((a, b) => a.label.localeCompare(b.label));
 	const choice = await vscode.window.showQuickPick(targets, {
 		placeHolder: "Select a target section to copy the selection into"
 	});
@@ -882,6 +884,7 @@ async function executeGeneralItemMoveCommand() {
 		label: s.namespace,
 		section: s
 	}));
+	targets.sort((a, b) => a.label.localeCompare(b.label));
 	const choice = await vscode.window.showQuickPick(targets, {
 		placeHolder: "Select a target section to move the selection into"
 	});
@@ -1146,6 +1149,7 @@ async function executeItemPrimitiveActionCommand(action, mode) {
 		label: s.namespace,
 		section: s
 	}));
+	targets.sort((a, b) => a.label.localeCompare(b.label));
 	const targetChoice = await vscode.window.showQuickPick(targets, {
 		placeHolder: `Select target section to ${action} & ${mode} item(s) into`
 	});
@@ -1164,6 +1168,7 @@ async function configureSectionContentInteractive(editor, sections) {
 				description: `Heading Level ${s.level}`,
 				section: s
 			}));
+			items.sort((a, b) => a.label.localeCompare(b.label));
 			const choice = await vscode.window.showQuickPick(stack.injectBackItem(items), {
 				placeHolder: "Select a Section to inspect"
 			});
@@ -1292,6 +1297,7 @@ async function executeSectionImportCommand() {
 		description: `Heading level ${s.level}`,
 		section: s
 	}));
+	items.sort((a, b) => a.label.localeCompare(b.label));
 	const targetChoice = await vscode.window.showQuickPick(items, {
 		placeHolder: "Select a Section To Import Data into"
 	});
@@ -1390,7 +1396,8 @@ function registerInteractivePipelines(context) {
 
 		const runStep1 = async () => {
 			stack.push(runStep1);
-			const pickerItems = sections.map(s => ({ label: s.namespace, description: `Heading line ${s.lineIndex + 1}` }));
+			const sortedSections = [...sections].sort((a, b) => a.namespace.localeCompare(b.namespace));
+			const pickerItems = sortedSections.map(s => ({ label: s.namespace, description: `Heading line ${s.lineIndex + 1}` }));
 
 			const quickPick = vscode.window.createQuickPick();
 			quickPick.items = stack.injectBackItem(pickerItems);
@@ -1399,37 +1406,64 @@ function registerInteractivePipelines(context) {
 
 			quickPick.onDidAccept(async () => {
 				const selected = quickPick.selectedItems;
-				if (selected.length === 0) { quickPick.dispose(); return; }
+				if (selected.length === 0) {
+					quickPick.dispose();
+					return;
+				}
 				quickPick.dispose();
 
-				const runStep2 = async () => {
-					stack.push(runStep2);
-					const actionChoice = await vscode.window.showQuickPick(stack.injectBackItem([
-						{ label: "📋 Copy Union Set Array", value: "copy" },
-						{ label: "💉 Inject Union Elements Below Cursor", value: "inject" }
-					]), { placeHolder: "⚡ Step 2: Choose execution method for union layout arrays" });
+				const runStepModeChoice = async () => {
+					stack.push(runStepModeChoice);
+					const modeChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+						{ label: "Unique (Default)", value: "unique", description: "Keep only unique lines across the chosen sections" },
+						{ label: "All", value: "all", description: "Keep all lines, including duplicate entries" }
+					]), { placeHolder: "Choose whether to keep only unique lines or all lines" });
 
-					if (stack.handleBackSelection(actionChoice)) return;
-					if (!actionChoice) return;
-
-					let unionLines = [];
-					selected.forEach(item => {
-						const targetNode = sections.find(s => s.namespace === item.label);
-						if (targetNode) unionLines.push(...targetNode.contentLines.map(l => l.raw));
-					});
-
-					const uniqueUnion = Array.from(new Set(unionLines));
-
-					if (actionChoice.value === "copy") {
-						await vscode.env.clipboard.writeText(uniqueUnion.join('\n'));
-						vscode.window.showInformationMessage(`HELL: Saved unique union composition [${uniqueUnion.length} lines] to clipboard cache!`);
-					} else {
-						const insertPos = new vscode.Position(editor.selection.active.line + 1, 0);
-						await editor.edit(editBuilder => editBuilder.insert(insertPos, uniqueUnion.join('\n') + '\n'));
-						handleFollowFocusRouting(editor, insertPos.line, selected[0]?.label);
+					if (stack.handleBackSelection(modeChoice)) {
+						return;
 					}
+					if (!modeChoice) {
+						return;
+					}
+
+					const chooseMode = modeChoice.value;
+
+					const runStep2 = async () => {
+						stack.push(runStep2);
+						const actionChoice = await vscode.window.showQuickPick(stack.injectBackItem([
+							{ label: "📋 Copy Union Set Array", value: "copy" },
+							{ label: "💉 Inject Union Elements Below Cursor", value: "inject" }
+						]), { placeHolder: "⚡ Step 2: Choose execution method for union layout arrays" });
+
+						if (stack.handleBackSelection(actionChoice)) {
+							return;
+						}
+						if (!actionChoice) {
+							return;
+						}
+
+						let unionLines = [];
+						selected.forEach(item => {
+							const targetNode = sections.find(s => s.namespace === item.label);
+							if (targetNode) {
+								unionLines.push(...targetNode.contentLines.map(l => l.raw));
+							}
+						});
+
+						const finalLines = chooseMode === "unique" ? Array.from(new Set(unionLines)) : unionLines;
+
+						if (actionChoice.value === "copy") {
+							await vscode.env.clipboard.writeText(finalLines.join('\n'));
+							vscode.window.showInformationMessage(`HELL: Saved union composition [${finalLines.length} lines] to clipboard cache!`);
+						} else {
+							const insertPos = new vscode.Position(editor.selection.active.line + 1, 0);
+							await editor.edit(editBuilder => editBuilder.insert(insertPos, finalLines.join('\n') + '\n'));
+							handleFollowFocusRouting(editor, insertPos.line, selected[0]?.label);
+						}
+					};
+					await runStep2();
 				};
-				await runStep2();
+				await runStepModeChoice();
 			});
 			quickPick.show();
 		};

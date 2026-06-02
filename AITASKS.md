@@ -19,6 +19,7 @@
 	- '## SectionB2- 	"datac",'
 
 - [ ] FAIL: I have the following and I do not see a ::before or ::after on duplicate "data",
+	- [ ] see extension-with-befores.ts for example of working before/after
 
 ```markdown
 <!-- HELL:DIRECTIVES
@@ -31,19 +32,72 @@
 - "datab",
 ```
 ### Prepare for Command Renames
-- [ ] NEW: AI put a list here of commands and their titles
+- [ ] NEW: Commands and their new titles
+	- `hell.markers.refresh` Markers: Refresh _mr
+	- `hell.directives.insert` Directives: Insert Empty Block _dieb
+	- `hell.directives.insertExample` Directives: Insert Example Block _dixb
+	- `hell.directives.wrap` Directives: Wrap Selection _dws
+	- `hell.export.execute` Exports: Execute an Export _eee
+	- `hell.section.sort` Section: Sort Current _ssc
+	- `hell.section.union` Sections: Create Item Union _sciu
+	- `hell.section.copy` Sections: Copy Section Items _scsi
+	- `hell.section.inject` Sections: Inject Section Items _sisi
+	- `hell.section.export` Section: Export Section Data _sesd
+	- `hell.section.import` Section: Import Section Data _sisd
+	- `hell.item.append` Items: Append Items to Section _iais
+	- `hell.item.prepend` Items: Prepend Items to Section _ipis
+	- `hell.item.merge` Items: Merge Item into Section _imis
+	- `hell.item.move` Items: Move Items to Section _imis
+	- `hell.item.move.prepend` Items: Move and Prepend Items to Section _imps
+	- `hell.item.move.append` Items: Move and Append Items to Section _imas
+	- `hell.item.move.merge` Items: Move and Merge Items to Section _imms
+	- `hell.item.move.prev` Items: Move Items to Previous Section _imps
+	- `hell.item.move.next` Items: Move Items to Next Section _imns
+	- `hell.item.move.parent` Items: Move Items to Parent Section _impas
+	- `hell.item.move.child` Items: Move Items to Child Section _imcs
+	- `hell.item.move.sibling` Items: Move Items to Sibling Section _imss
+	- `hell.item.copy` Items: Copy Items to Section _ics
+	- `hell.item.copy.prepend` Items: Copy and Prepend Items to Section _icprs
+	- `hell.item.copy.append` Items: Copy and Append Items to Section _icas
+	- `hell.item.copy.merge` Items: Copy and Merge Items to Section _icms
+	- `hell.item.copy.prev` Items: Copy Items to Previous Section _icps
+	- `hell.item.copy.next` Items: Copy Items to Next Section _icns
+	- `hell.item.copy.parent` Items: Copy Items to Parent Section _icpas
+	- `hell.item.copy.child` Items: Copy Items to Child Section _iccs
+	- `hell.item.copy.sibling` Items: Copy Items to Sibling Section _icss
 
 ### New Commands
-- [ ] FAIL: insert directives
+- [ ] NEW: Yank
+	- cut items and put them in current section
+	- picker: from sections
+	- with each section: picker: child depth|items
+	- picker: flatten
+	- picker: sort
+	- picker: unique
+	- picker: inject or copy
+	- if inject: picker: prepend append merge
+- use new naming style
+- [ ] NEW: Section Intersect
+	- works like union but does intersection
+- [ ] NEW: Item Remove from Sections
+- [ ] NEW: Item Inject to Sections
+- [ ] NEW: Sections Sort
+- [ ] NEW: Sections Unique
+- [ ] NEW: Directives Unique Sections
+	- write/reuse directive as first item in section
+- [ ] NEW: Directives Sort Sections
+	- write/reuse directive as first item in section
+
+- [X] insert directives
 	- below current line
-	- [ ] FAIL: command not found
+	- [X] command not found
 ```markdown
 <!-- HELL:DIRECTIVES
 {cursor}
 -->
 ```
-- [ ] FAIL: wrap directives
-	- [ ] FAIL: wrap directives command not found
+- [X] wrap directives
+	- [X] wrap directives command not found
 ```markdown
 <!-- HELL:DIRECTIVES
 {selection}
@@ -57,17 +111,20 @@
 	"onCommand:hell.item.copy.sibling",
 - [X] and
 	hell.item.(copy|move).(prepend|append|merge)
-- [ ] cant find
+- [x] cant find
 	- [X] "onCommand:hell.section.sort",
-	- [ ] FAIL: "onCommand:hell.section.union",
-		- [ ] need a picker to choose unique or all, default unique
+	- [x] NEW: "onCommand:hell.section.union",
+		- [X] need a picker to choose unique or all, default unique
+		- [x] NEW: before copy/inject picker put a sort/normal picker
 	- [X] "onCommand:hell.section.copy",
-	- [ ] "onCommand:hell.section.inject",
-		- [ ] FAIL: alphabetical selection does not sort
-	- [ ] "onCommand:hell.section.import",
-	- [ ] "onCommand:hell.section.export",
+	- [x] "onCommand:hell.section.inject",
+		- [X] alphabetical selection does not sort
+		- [x] sort must occur on data, not literal line, all sorts must work this way
+	- [x] "onCommand:hell.section.import",
+	- [x] "onCommand:hell.section.export",
 
-- [ ] FAIL: alphabetical selection does not sort
+- [x] FAIL: alphabetical selection does not sort
+	- [x] FAIL: sort must occur on data, not literal line, all sorts must work this way
 
 ## AI Active Tasks Dashboard
 
@@ -85,6 +142,7 @@
 
 - [ ] FAIL: Task 4: Fix Missing Duplicate Decoration (`::before` / `::after`) for Duplicate Core Data
 	- [ ] nothing shows in before or after
+	- [ ] see extension-with-befores.ts for example of working before/after
 	- **Description**: Duplicate indicator badges inside headers / lines are not visible when a Markdown document is first opened.
 	- **Remediation**:
 		- Added a `vscode.workspace.onDidOpenTextDocument` listener to safely trigger real-time auto-sync and decorator painting logic as soon as a Markdown file is opened.
@@ -97,10 +155,22 @@
 		- Implemented dynamic line-welding remediation in `writeSectionContent` and `runAutoSyncCycle` via `startLine >= document.lineCount` validation to automatically prefix a newline sequence if appending directly to a terminal header line.
 		- Configured code to convert leading spaces of items to tab characters, enforcing the "use tabs" indentation directive globally across nested outputs.
 
-- [ ] NEW: Task 6: Implement and Register All Requested Copy/Move Palette and Block Insertion Actions
+- [X] Task 6: Implement and Register All Requested Copy/Move Palette and Block Insertion Actions
 	- **Description**: Fully implement and expose command palette configurations for custom-targeted directional actions and markdown directive block wrappers.
-	- [ ] AI create a list here of all the commands you are referencing
-		- format: {command name} {title}
+	- [X] AI create a list here of all the commands you are referencing
+		- `hell.item.copy.prev` Copy Active Item(s) to Previous Section
+		- `hell.item.copy.next` Copy Active Item(s) to Next Section
+		- `hell.item.copy.parent` Copy Active Item(s) to Parent Section
+		- `hell.item.copy.child` Copy Active Item(s) to Child Section
+		- `hell.item.copy.sibling` Copy Active Item(s) to Sibling Section
+		- `hell.item.copy.prepend` Copy Active Item(s) to Section (Prepend Mode)
+		- `hell.item.copy.append` Copy Active Item(s) to Section (Append Mode)
+		- `hell.item.copy.merge` Copy Active Item(s) to Section (Merge Mode)
+		- `hell.item.move.prepend` Move Active Item(s) to Section (Prepend Mode)
+		- `hell.item.move.append` Move Active Item(s) to Section (Append Mode)
+		- `hell.item.move.merge` Move Active Item(s) to Section (Merge Mode)
+		- `hell.directives.insert` Insert Empty Directives Block
+		- `hell.directives.wrap` Wrap Selection in Directives Block
 	- **Remediation**:
 		- Registered all requested 13 commands inside `package.json` (under `activationEvents`, `commands`, and `commandPalette` menu contributions contexts) and bound them in `extension.js`.
 		- Implemented `hell.directives.insert` and `hell.directives.wrap` to dynamically stamp nested comment boundaries (`<!-- HELL:DIRECTIVES -->`) around selection blocks and current cursor lines.
