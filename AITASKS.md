@@ -12,6 +12,54 @@
 - ▪️[SPEC.md](SPEC.md)
 - ▪️[TESTING.md](TESTING.md)
 
+## Fails
+- [ ] FAIL: copy to next section fails if next section does not have a newline below
+	- '## SectionB2- 	"datac",'
+
+- [ ] FAIL: I have the following and I do not see a ::before or ::after on duplicate "data",
+
+```markdown
+<!-- HELL:DIRECTIVES
+🔸 UNIQUE SectionA >>
+🔸 UNIQUE SectionB2 >>
+-->
+## SectionA
+- "data",
+- "data",
+- "datab",
+```
+## New Commands
+- insert directives
+	- below current line
+```markdown
+<!-- HELL:DIRECTIVES
+{cursor}
+-->
+```
+- wrap directives
+```markdown
+<!-- HELL:DIRECTIVES
+{selection}
+-->
+```
+- need these
+	"onCommand:hell.item.copy.prev",
+	"onCommand:hell.item.copy.next",
+	"onCommand:hell.item.copy.parent",
+	"onCommand:hell.item.copy.child",
+	"onCommand:hell.item.copy.sibling",
+- and
+hell.item.(copy|move).(prepend|append|merge)
+- cant find
+		"onCommand:hell.section.sort",
+		"onCommand:hell.section.union",
+		"onCommand:hell.section.copy",
+		"onCommand:hell.section.inject",
+		"onCommand:hell.section.import",
+		"onCommand:hell.section.export",
+
+
+
 ## [x] Incoming tasks from chat
 - [x] NEW: Fix SectionA duplicate detection by supporting SAMPLE and checking quote tokenization with indentation
 - [x] NEW: Fix "copy/move to next section fails if next section does not have a newline below"

@@ -72,98 +72,98 @@
 		"commands": [
 			{
 				"command": "hell.directives.insertExample",
-				"title": "HELL: Insert Example Directives Template Block",
-				"category": "HELL"
+				"title": "Insert Example Directives Template Block",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.export.execute",
-				"title": "HELL: Execute Named Export Directive",
-				"category": "HELL"
+				"title": "Execute Named Export Directive",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.sort",
-				"title": "HELL: Sort Section Content (Ignore Bullets/Checkboxes)",
-				"category": "HELL"
+				"title": "Sort Section Content (Ignore Bullets/Checkboxes)",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.union",
-				"title": "HELL: Compute Global Union Set... (Interactive Picker Options)",
-				"category": "HELL"
+				"title": "Compute Global Union Set... (Interactive Picker Options)",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.copy",
-				"title": "HELL: Copy Section(s)... (Interactive Options)",
-				"category": "HELL"
+				"title": "Copy Section(s)... (Interactive Options)",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.inject",
-				"title": "HELL: Inject Section(s)... (Interactive Options)",
-				"category": "HELL"
+				"title": "Inject Section(s)... (Interactive Options)",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.import",
-				"title": "HELL: Import Data Array to Section...",
-				"category": "HELL"
+				"title": "Import Data Array to Section...",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.section.export",
-				"title": "HELL: Export Section Data Array to File...",
-				"category": "HELL"
+				"title": "Export Section Data Array to File...",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.append",
-				"title": "HELL: Append Active Item to Section",
-				"category": "HELL"
+				"title": "Append Active Item to Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.prepend",
-				"title": "HELL: Prepend Active Item to Section",
-				"category": "HELL"
+				"title": "Prepend Active Item to Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.merge",
-				"title": "HELL: Merge Active Item into Section (No Dupes)",
-				"category": "HELL"
+				"title": "Merge Active Item into Section (No Dupes)",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.prev",
-				"title": "HELL: Copy/Move Item to Previous Section",
-				"category": "HELL"
+				"title": "Copy/Move Item to Previous Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.next",
-				"title": "HELL: Copy/Move Item to Next Section",
-				"category": "HELL"
+				"title": "Copy/Move Item to Next Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.parent",
-				"title": "HELL: Copy/Move Item to Parent Section",
-				"category": "HELL"
+				"title": "Copy/Move Item to Parent Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.child",
-				"title": "HELL: Copy/Move Item to Child Section",
-				"category": "HELL"
+				"title": "Copy/Move Item to Child Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move.sibling",
-				"title": "HELL: Copy/Move Item to Sibling Section",
-				"category": "HELL"
+				"title": "Copy/Move Item to Sibling Section",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.copy",
-				"title": "HELL: Copy Active Item(s) to Section...",
-				"category": "HELL"
+				"title": "Copy Active Item(s) to Section...",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.item.move",
-				"title": "HELL: Move Active Item(s) to Section...",
-				"category": "HELL"
+				"title": "Move Active Item(s) to Section...",
+				"category": "👹HELL"
 			},
 			{
 				"command": "hell.markers.refresh",
-				"title": "HELL: Re-evaluate Section Integrity Indicators (Lint Markers)",
-				"category": "HELL"
+				"title": "Re-evaluate Section Integrity Indicators (Lint Markers)",
+				"category": "👹HELL"
 			}
 		],
 		"menus": {
