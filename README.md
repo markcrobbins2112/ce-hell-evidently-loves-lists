@@ -5,6 +5,7 @@ longer description
 -->
 
 ![icon](icon.jpg)
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/markcrobbins)
 ---
 ## AI Primary Files
 - ▪️[AGENTS.md](AGENTS.md)
