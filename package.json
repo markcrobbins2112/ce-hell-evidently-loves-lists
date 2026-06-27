@@ -1,5 +1,5 @@
 {
-	"name": "hell-evidently-loves-lists",
+	"name": "ce-hell-evidently-loves-lists",
 	"displayName": "Hell Evidently Loves Lists",
 	"description": "HELL: - Automated markdown list data compiler using double-colon namespaces and multi-tier child combinators.",
 	"version": "0.0.1",
@@ -37,6 +37,14 @@
 		"@types/vscode": "^1.80.0",
 		"@vscode/vsce": "^3.6.2"
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/markcrobbins2112/ce-hell-evidently-loves-lists.git"
+	},
+	"bugs": {
+		"url": "https://github.com/markcrobbins2112/ce-hell-evidently-loves-lists/issues"
+	},
+	"homepage": "https://github.com/markcrobbins2112/ce-hell-evidently-loves-lists#readme",
 	"activationEvents": [
 		"onLanguage:markdown"
 	],
