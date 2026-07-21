@@ -1,6 +1,10 @@
+---
+title: README
+---
+
 <!-- # TEMPLATE: README.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# README
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with real paths, rules, and project constraints.
 #
@@ -12,6 +16,7 @@
 
 
 <!-- markdownlint-disable MD013 -->
+
 # Hell Evidently Loves Lists
 
 👹HELL: - Automated markdown list data compiler using double-colon namespaces and multi-tier child combinators.

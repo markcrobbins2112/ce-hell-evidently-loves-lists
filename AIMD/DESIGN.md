@@ -1,6 +1,10 @@
+---
+title: DESIGN
+---
+
 <!-- # TEMPLATE: DESIGN.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# DESIGN
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with real paths, rules, and project constraints.
 #
@@ -10,6 +14,7 @@
 -->
 
 <!-- markdownlint-disable MD013 -->
+
 # DESIGN
 
 ## 📑 AI Primary Files

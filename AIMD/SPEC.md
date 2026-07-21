@@ -1,6 +1,10 @@
+---
+title: SPEC
+---
+
 <!-- # TEMPLATE: SPEC.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# SPEC
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with real paths, rules, and project constraints.
 #
@@ -11,6 +15,7 @@
 -->
 
 <!-- markdownlint-disable MD013 -->
+
 # SPEC
 
 ## 📑 AI Primary Files

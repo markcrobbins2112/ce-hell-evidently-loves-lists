@@ -1,6 +1,10 @@
+---
+title: TERMS
+---
+
 <!-- # TEMPLATE: TERMS.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# TERMS
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with real project terms, definitions, and acronym boundaries.
 #
@@ -10,6 +14,7 @@
 -->
 
 <!-- markdownlint-disable MD013 -->
+
 # TERMS
 
 ## 📑 AI Primary Files

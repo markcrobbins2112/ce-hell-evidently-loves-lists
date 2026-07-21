@@ -1,6 +1,10 @@
+---
+title: ARCHIVE
+---
+
 <!-- # TEMPLATE: ARCHIVE.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# ARCHIVE
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with sunset modules or deprecated code logic.
 #
@@ -10,6 +14,7 @@
 -->
 
 <!-- markdownlint-disable MD013 -->
+
 # ARCHIVE
 
 ## 📑 AI Primary Files

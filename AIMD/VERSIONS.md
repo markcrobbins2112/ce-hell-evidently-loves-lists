@@ -1,6 +1,10 @@
+---
+title: VERSIONS
+---
+
 <!-- # TEMPLATE: VERSIONS.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# VERSIONS
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with semantic version history and deployment updates.
 #
@@ -10,6 +14,7 @@
 -->
 
 <!-- markdownlint-disable MD013 -->
+
 # VERSIONS
 
 ## 📑 AI Primary Files

@@ -1,6 +1,10 @@
+---
+title: TESTING
+---
+
 <!-- # TEMPLATE: TESTING.template.md -->
 <!-- 
-# INSTRUCTIONS FOR THE HUMAN DEVELOPER:
+# TESTING
 # Any text bounded by double curly braces {{like this}} is a placeholder for you to fill out.
 # Replace those placeholders with real paths, rules, and project constraints.
 #
@@ -11,6 +15,7 @@
 -->
 
 <!-- markdownlint-disable MD013 -->
+
 # TESTING
 
 ## 📑 AI Primary Files
